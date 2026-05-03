@@ -7,72 +7,21 @@
 #include "freertos/task.h"
 #include <math.h>
 #include <stdio.h>
+#include "app_control.h"
 
 static const char *TAG = "main";
 
 #define NUM_CHIPS 2
-#define SINE_POINTS 225
-
-// Constants for conditioning
-#define OFFSET_R -2.9f
-#define OFFSET_S -2.9f
-#define OFFSET_T -2.9f
-
-// Constants for Outgoing Control Effort (Telemetry)
-#define RMS_BUFFER_SIZE 675 // 3 ciclos de 60Hz
-
-// Ganho do amplificador de condicionamento do sinal do DAC
-#define OUT_GAIN 1.0f
-// Offset do amplificador de condicionamento do sinal do DAC
-#define OUT_OFFSET -1.65f
-// Cargar (Ohms) que transforma a tensão do condicionador em corrente.
-#define R_LOAD 10.0f
 
 // ADC Channels (using ADC1 on ESP32-S3: GPIO4, GPIO5, GPIO6)
 #define ADC_CHAN_R ADC_CHANNEL_3
 #define ADC_CHAN_S ADC_CHANNEL_4
 #define ADC_CHAN_T ADC_CHANNEL_5
 
-// PR Controller Constants (Calculated via Octave for Bits Domain)
-#define PR_B0 12.532f
-#define PR_B1 -24.115f
-#define PR_B2 11.601f
-#define PR_A1 -1.995f
-#define PR_A2 0.998f
-#define PR_OFFSET -1.650f
-
-typedef struct {
-  float e[3]; // Histórico de erros: [0]=atual, [1]=k-1, [2]=k-2
-  float u[3]; // Histórico de ações: [0]=atual, [1]=k-1, [2]=k-2
-} PR_Estado_t;
-
-static PR_Estado_t pr_fase_r, pr_fase_s, pr_fase_t;
-
-////////////////////////////////////////////////////////////////////////////////
-// O que segue são dummy data usados para gerar um sinal senoidal trifásico
-// para testar se o loop de controle está determinístico.
-// The LUT for 60Hz sine at 13.5kHz sampling rate. Placed in RAM.
-DRAM_ATTR static uint16_t sine_lut[SINE_POINTS];
-
-// Indices for phase shifting (3-phase network)
-#define PHASE_0_OFFSET 0
-#define PHASE_120_OFFSET 75  // 120 degrees = 1/3 of 225 points
-#define PHASE_240_OFFSET 150 // 240 degrees = 2/3 of 225 points
-// Fim do dummy data
-////////////////////////////////////////////////////////////////////////////////
-
 static mcp4922_context_t dac_ctx;
 
 static TaskHandle_t control_task_handle = NULL;
 static TaskHandle_t rms_task_handle = NULL;
-
-// Telemetry
-// Para medição do valor RMS da corrente a ser medida
-static volatile bool capture_requested = false;
-static volatile int capture_idx = 0;
-static uint16_t dac_history_r[RMS_BUFFER_SIZE];
-static uint16_t dac_history_s[RMS_BUFFER_SIZE];
-static uint16_t dac_history_t[RMS_BUFFER_SIZE];
 
 // ADC Handles
 static adc_continuous_handle_t adc_handle = NULL;
@@ -172,40 +121,8 @@ static bool init_adc_calibration(adc_unit_t unit, adc_atten_t atten,
   return calibrated;
 }
 
-static void pr_init(PR_Estado_t *estado) {
-  for (int i = 0; i < 3; i++) {
-    estado->e[i] = 0.0f;
-    estado->u[i] = 0.0f;
-  }
-}
-
-static inline float IRAM_ATTR calcular_controle_PR(PR_Estado_t *estado,
-                                                   float erro_atual) {
-  estado->e[0] = erro_atual;
-
-  estado->u[0] = (PR_B0 * estado->e[0]) + (PR_B1 * estado->e[1]) +
-                 (PR_B2 * estado->e[2]) - (PR_A1 * estado->u[1]) -
-                 (PR_A2 * estado->u[2]) + PR_OFFSET;
-
-  if (estado->u[0] > 4095.0f)
-    estado->u[0] = 4095.0f;
-  if (estado->u[0] < 0.0f)
-    estado->u[0] = 0.0f;
-
-  estado->e[2] = estado->e[1];
-  estado->e[1] = estado->e[0];
-  estado->u[2] = estado->u[1];
-  estado->u[1] = estado->u[0];
-
-  return estado->u[0];
-}
-
 static void IRAM_ATTR control_loop_task(void *arg) {
   ESP_LOGI(TAG, "Entering DMA Control Loop on Core %d", xPortGetCoreID());
-
-  pr_init(&pr_fase_r);
-  pr_init(&pr_fase_s);
-  pr_init(&pr_fase_t);
 
   // Acquire bus permanently for ultra-fast writing
   spi_device_acquire_bus(dac_ctx.spi_handle, portMAX_DELAY);
@@ -298,15 +215,8 @@ static void IRAM_ATTR control_loop_task(void *arg) {
 
     mcp4922_ll_write_channels(ctx, val);
 
-    if (capture_requested) {
-      dac_history_r[capture_idx] = val[0];
-      dac_history_s[capture_idx] = val[1];
-      dac_history_t[capture_idx] = val[2];
-      capture_idx++;
-      if (capture_idx >= RMS_BUFFER_SIZE) {
-        capture_requested = false;
+    if (app_control_store_telemetry(val[0], val[1], val[2])) {
         xTaskNotifyGive(rms_task_handle);
-      }
     }
 
     local_lut_idx++;
@@ -325,48 +235,14 @@ static void rms_calc_task(void *arg) {
 
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    float sum_sq_r = 0.0f;
-    float sum_sq_s = 0.0f;
-    float sum_sq_t = 0.0f;
-
-    for (int i = 0; i < RMS_BUFFER_SIZE; i++) {
-      // R
-      float v_dac_r = (dac_history_r[i] * 3.3f) / 4095.0f;
-      float v_cond_r = (v_dac_r * OUT_GAIN) + OUT_OFFSET;
-      float i_out_r = v_cond_r / R_LOAD;
-      sum_sq_r += i_out_r * i_out_r;
-
-      // S
-      float v_dac_s = (dac_history_s[i] * 3.3f) / 4095.0f;
-      float v_cond_s = (v_dac_s * OUT_GAIN) + OUT_OFFSET;
-      float i_out_s = v_cond_s / R_LOAD;
-      sum_sq_s += i_out_s * i_out_s;
-
-      // T
-      float v_dac_t = (dac_history_t[i] * 3.3f) / 4095.0f;
-      float v_cond_t = (v_dac_t * OUT_GAIN) + OUT_OFFSET;
-      float i_out_t = v_cond_t / R_LOAD;
-      sum_sq_t += i_out_t * i_out_t;
-    }
-
-    float rms_r = sqrtf(sum_sq_r / RMS_BUFFER_SIZE);
-    float rms_s = sqrtf(sum_sq_s / RMS_BUFFER_SIZE);
-    float rms_t = sqrtf(sum_sq_t / RMS_BUFFER_SIZE);
-
-    ESP_LOGI(TAG, "Corrente RMS Fase R: %.3f A", rms_r);
-    ESP_LOGI(TAG, "Corrente RMS Fase S: %.3f A", rms_s);
-    ESP_LOGI(TAG, "Corrente RMS Fase T: %.3f A", rms_t);
+    app_control_calc_rms();
   }
 }
 
 void app_main(void) {
   ESP_LOGI(TAG, "Starting Digital Control Loop Architecture (ESP32-S3)");
 
-  // Populate the Sine LUT
-  for (int i = 0; i < SINE_POINTS; i++) {
-    double angle = (2.0 * M_PI * i) / SINE_POINTS;
-    sine_lut[i] = (uint16_t)(2048.0 + 2047.0 * sin(angle));
-  }
+  app_control_init();
 
   // Configure MCP4922
   gpio_num_t cs_pins[NUM_CHIPS] = {CONFIG_MCP4922_CS1_PIN,
@@ -404,10 +280,11 @@ void app_main(void) {
   };
 
   adc_digi_pattern_config_t adc_pattern[3] = {0};
-  adc_pattern[0].atten = ADC_ATTENUATION;
-  adc_pattern[0].channel = ADC_CHAN_R;
-  adc_pattern[0].unit = ADC_UNIT_1;
-  adc_pattern[0].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
+  // Define a configuração de cada canal do ADC
+  adc_pattern[0].atten = ADC_ATTENUATION; // Faixa de tensão de entrada
+  adc_pattern[0].channel = ADC_CHAN_R;    // Canal conectado ao ADC
+  adc_pattern[0].unit = ADC_UNIT_1;       // ADC1 (pode ser 0 ou 1)
+  adc_pattern[0].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH; // Resolução: 12 bits
 
   adc_pattern[1].atten = ADC_ATTENUATION;
   adc_pattern[1].channel = ADC_CHAN_S;
@@ -425,7 +302,8 @@ void app_main(void) {
 
   // Register DMA Callback
   adc_continuous_evt_cbs_t cbs = {
-      .on_conv_done = adc_on_conv_done,
+      .on_conv_done = adc_on_conv_done, // Função que será chamada quando
+                                        // um frame for completo
   };
   ESP_ERROR_CHECK(
       adc_continuous_register_event_callbacks(adc_handle, &cbs, NULL));
