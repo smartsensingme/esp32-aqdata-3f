@@ -1,59 +1,49 @@
-# ESP-MCP4922 High-Performance DAC Component
+# ESP32-S3 High-Performance Digital Control Architecture
 
 *Read this in other languages: [Português](README.pt-br.md)*
 
-An ultra-low latency, bare-metal optimized ESP-IDF component for the **Microchip MCP4922** 12-bit Dual DAC. 
+An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **hard real-time Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with an auto-calibrating **Direct Digital Synthesis (DDS)** sine wave generator and isolated Wi-Fi/MQTT telemetry.
 
-This component is specifically engineered for **hard real-time digital control loops** (such as high-frequency PI/PID controllers for power electronics or inverters), where standard RTOS and SPI driver overheads are unacceptable.
+## Core Architecture
 
-## Features
+To guarantee strict determinism (microsecond latency) without triggering RTOS watchdogs or stalling under heavy network loads, the system leverages asymmetric multicore processing:
 
-- **Dual-Mode Operation**:
-  - **Standard Mode (`mcp4922_write_channels`)**: Thread-safe, standard ESP-IDF driver implementation. Ideal when the SPI bus is shared with other peripherals (like SD cards or TFT displays).
-  - **Bare-Metal Mode (`mcp4922_ll_write_channels`)**: Bypasses the ESP-IDF abstraction layer and writes directly to the physical SPI hardware FIFO (`GPSPI2.data_buf`). Eliminates FreeRTOS locks and context checks, reducing transmission latency from >100us to **~3us**.
-- **Multi-Chip Support**: Easily control multiple MCP4922 chips on the same SPI bus with software CS multiplexing.
-- **Cross-Platform**: The Bare-Metal implementation uses preprocessor macros to seamlessly support the classic ESP32, as well as modern chips (ESP32-S2, S3, C3, C6, and ESP32-P4).
+- **Core 1 (Real-Time Control Loop):** Completely isolated from the network stack. Driven by the hardware ADC Continuous Mode (via DMA) at ~13.7kHz. Executes the Proportional-Resonant (PR) math, DDS phase accumulation, and writes directly to the physical SPI hardware FIFO (`mcp4922_ll_write_channels`) in `< 4us`.
+- **Core 0 (Telemetry & Networking):** Runs the FreeRTOS Wi-Fi, TLS, and MQTT stacks. Calculates RMS currents over 3-cycle windows in the background and publishes JSON payloads securely (MQTTS) without stealing CPU cycles from the control loop.
+
+## Key Features
+
+- **Continuous ADC DMA Triggering**: Replaces traditional `gptimer` interrupts with hardware DMA callbacks, ensuring the control loop is perfectly synchronized with physical analog sampling.
+- **Auto-Calibrating DDS Phase Accumulator**: Bypasses the ESP32-S3's rigid integer clock dividers. It dynamically measures the true hardware interrupt frequency using `esp_timer` over the first 20,000 samples and automatically adjusts the 32-bit phase increment to guarantee a **perfect 60.00 Hz** output sine wave.
+- **Bare-Metal SPI DAC Driver**: Bypasses the ESP-IDF abstraction layer for the MCP4922 12-bit Dual DAC. Eliminates FreeRTOS locks and context checks, reducing transmission latency from >100us to **~3us**.
+- **Proportional-Resonant (PR) Controller**: Industrial-grade control structure natively tracking 60Hz AC signals with zero steady-state error.
+- **Wi-Fi Power Management & MQTTS**: Wi-Fi Tx power is attenuated (`WIFI_DBPOWER`) and Power Save is disabled to prevent hardware brownouts and RF cross-talk from corrupting the sensitive analog measurements.
 
 ## Project Structure
 
-This project is structured as an ESP-IDF component with an included usage example:
+* `components/esp_mcp4922/`: The core driver component containing the high-level and bare-metal (`ll`) implementations for the MCP4922.
+* `main/app_control.c`: The mathematical brain of the project. Contains the PR Controller equations, RMS calculations, and Sine Wave LUT generations.
+* `main/main.c`: The orchestrator. Configures the dual-core architecture, ADC DMA, Wi-Fi/MQTT connections, and runs the high-speed critical section.
+* `main/secrets.txt`: (User created) Contains Wi-Fi and MQTT credentials excluded from version control.
 
-* `components/esp_mcp4922/`: The core driver component. Contains the high-level and low-level implementations.
-* `main/main.c`: A complete usage example. It configures the DAC and utilizes the ESP-IDF `gptimer` to generate a perfect **3-phase 60Hz sine wave (120° offset)** at a 13.5kHz sampling rate.
+## Hardware Setup
 
-## Example Usage: 3-Phase Sine Wave Generator
+* **ADC Input (ADC1)**: GPIO 4 (Phase R), GPIO 5 (Phase S), GPIO 6 (Phase T)
+* **DAC SPI (SPI2)**: MOSI (GPIO 11), SCK (GPIO 12), LDAC (GPIO 14), CS1 (GPIO 10), CS2 (GPIO 9)
 
-The example provided in `main.c` demonstrates the "Deferred Interrupt Processing" RTOS pattern. It uses a high-frequency (13.5kHz) hardware timer to wake up a maximum-priority FreeRTOS task. This ensures deterministic timing while keeping the ISR clean, preventing FPU context corruption that would occur if floating-point math were used inside the ISR itself.
+## How to Build and Run
 
-### Hardware Setup
-
-By default, the component uses the following pins (configurable via ESP-IDF `menuconfig`):
-
-* **MOSI**: GPIO 11
-* **SCK**: GPIO 12
-* **LDAC**: GPIO 14
-* **CS1** (Chip 1): GPIO 10
-* **CS2** (Chip 2): GPIO 9
-
-*Note: The hardware CS pin of the SPI peripheral is intentionally disabled (`spics_io_num = -1`). The component manually drives the CS pins using fast `gpio_ll` commands to eliminate the massive driver overhead caused by rapid device switching.*
-
-### How to Build and Run
-
-1. Make sure your ESP-IDF environment is active (`. export.sh`).
-2. Build the project:
-   ```bash
-   idf.py build
+1. Clone the project.
+2. Create `main/secrets.txt` with your credentials based on `secrets.example.txt`:
+   ```c
+   #define WIFI_PASS "your_wifi_password"
+   #define MQTT_PASS "your_mqtt_password"
    ```
-3. Flash and monitor:
+3. Activate your ESP-IDF v5/v6 environment (`. export.sh`).
+4. Build and flash:
    ```bash
-   idf.py -p /dev/ttyUSB0 flash monitor
+   idf.py build flash monitor
    ```
-
-## Design Philosophy & Architecture
-
-For a digital control loop running at 13.5kHz, the execution window is exactly **74 microseconds**. Standard SPI transactions with FreeRTOS mutexes take around 25us per call. Updating 4 channels (2 chips) would take >100us, starving the Idle Task and triggering the FreeRTOS Task Watchdog (TWDT).
-
-By acquiring the SPI bus permanently (`spi_device_acquire_bus`) and utilizing the `mcp4922_ll_write_channels` function, the execution time is reduced to < 4us. This leaves ~70us of free CPU time for heavy floating-point control logic (PI/PID) while completely neutralizing Watchdog crashes.
 
 ---
 ![SmartSensing.me Logo](https://smartsensing.me/ssme-logo.png)
@@ -73,7 +63,7 @@ Unlike superficial content aimed only at clicks, this repository delivers:
 
 ## 🛠️ Technologies
 - **Hardware Target:** ESP32 / ESP32-S3
-- **Framework:** ESP-IDF v5.x
+- **Framework:** ESP-IDF v5.x / v6.x
 - **Language:** C / C++
 - **Simulation:** LTSpice (Sensor Modeling)
 

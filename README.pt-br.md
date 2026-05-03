@@ -1,59 +1,49 @@
-# Componente DAC de Alta Performance ESP-MCP4922
+# Arquitetura de Controle Digital de Alta Performance (ESP32-S3)
 
 *Leia em outros idiomas: [English](README.md)*
 
-Um componente ESP-IDF de latência ultrabaixa e otimizado em bare-metal para o DAC duplo de 12 bits **Microchip MCP4922**.
+Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) de tempo real rígido (hard real-time)** para sistemas de rede trifásica (ex: inversores), acoplado a um gerador de onda senoidal via **DDS (Direct Digital Synthesis) com Auto-Calibração** e telemetria Wi-Fi/MQTT totalmente isolada.
 
-Este componente foi projetado especificamente para **laços de controle digital de tempo real rígido (hard real-time)** (como controladores PI/PID de alta frequência para eletrônica de potência ou inversores), onde a sobrecarga padrão do RTOS e dos drivers SPI é inaceitável.
+## Arquitetura Central
 
-## Características
+Para garantir um determinismo absoluto (latência na casa dos microssegundos) sem disparar watchdogs do RTOS ou sofrer engasgos sob tráfego intenso de rede, o sistema utiliza processamento multicore assimétrico:
 
-- **Operação em Modo Duplo**:
-  - **Modo Padrão (`mcp4922_write_channels`)**: Implementação padrão e *thread-safe* do driver ESP-IDF. Ideal quando o barramento SPI é compartilhado com outros periféricos (como cartões SD ou displays TFT).
-  - **Modo Bare-Metal (`mcp4922_ll_write_channels`)**: Ignora a camada de abstração do ESP-IDF e escreve diretamente no FIFO de hardware do SPI (`GPSPI2.data_buf`). Elimina os bloqueios do FreeRTOS e verificações de contexto, reduzindo a latência de transmissão de >100us para **~3us**.
-- **Suporte a Múltiplos Chips**: Controle facilmente vários chips MCP4922 no mesmo barramento SPI multiplexando o CS por software.
-- **Multiplataforma**: A implementação Bare-Metal usa macros de pré-processador para suportar perfeitamente o ESP32 clássico, bem como chips modernos (ESP32-S2, S3, C3, C6 e ESP32-P4).
+- **Core 1 (Laço de Controle de Tempo Real):** Completamente isolado do stack de rede. Acionado pelo modo Contínuo do ADC em hardware (via DMA) a ~13,7 kHz. Executa a matemática do Controlador Proporcional-Ressonante (PR), o acumulador de fase do DDS e escreve diretamente no FIFO físico do SPI (`mcp4922_ll_write_channels`) em `< 4us`.
+- **Core 0 (Telemetria e Rede):** Roda o FreeRTOS com o stack de Wi-Fi, TLS e MQTT. Calcula as correntes RMS em janelas móveis de 3 ciclos em background e publica payloads JSON de forma segura (MQTTS), sem roubar nem um ciclo de CPU do laço de controle.
+
+## Principais Características
+
+- **Disparo Contínuo via DMA do ADC**: Substitui as interrupções tradicionais de `gptimer` por callbacks de hardware do DMA, garantindo que o laço de controle esteja em perfeita sincronia com a amostragem analógica do mundo físico.
+- **Acumulador de Fase DDS Auto-Calibrado**: Contorna a imprecisão dos divisores de clock inteiros do ESP32-S3. Ele mede dinamicamente a frequência real das interrupções do hardware usando o `esp_timer` ao longo das primeiras 20.000 amostras e ajusta automaticamente o incremento de fase de 32-bits para garantir uma onda senoidal de **exatos 60.00 Hz**.
+- **Driver SPI DAC em Bare-Metal**: Ignora a camada de abstração do ESP-IDF para o DAC Duplo de 12 bits MCP4922. Elimina bloqueios do FreeRTOS e trocas de contexto, reduzindo a latência de transmissão de >100us para **~3us**.
+- **Controlador Proporcional-Ressonante (PR)**: Estrutura de controle de nível industrial que rastreia nativamente sinais AC de 60Hz com erro de estado estacionário nulo.
+- **Gestão de Energia Wi-Fi & MQTTS**: A potência de transmissão do Wi-Fi é atenuada (`WIFI_DBPOWER`) e o Power Save é desativado para evitar quedas de tensão (brownouts) no hardware e impedir que o ruído cruzado de RF (cross-talk) corrompa as medições analógicas sensíveis.
 
 ## Estrutura do Projeto
 
-Este projeto está estruturado como um componente ESP-IDF com um exemplo de uso incluído:
+* `components/esp_mcp4922/`: O componente central que contém as implementações de alto nível e bare-metal (`ll`) para o MCP4922.
+* `main/app_control.c`: O cérebro matemático do projeto. Contém as equações do Controlador PR, cálculos de RMS e a geração da Tabela de Seno (LUT).
+* `main/main.c`: O orquestrador. Configura a arquitetura dual-core, o DMA do ADC, as conexões Wi-Fi/MQTT e executa a seção crítica de altíssima velocidade.
+* `main/secrets.txt`: (Criado pelo usuário) Contém as credenciais de Wi-Fi e MQTT, ignoradas pelo controle de versão.
 
-* `components/esp_mcp4922/`: O componente central do driver. Contém as implementações de alto e baixo nível.
-* `main/main.c`: Um exemplo completo de uso. Ele configura o DAC e utiliza o `gptimer` do ESP-IDF para gerar uma perfeita **onda senoidal trifásica de 60Hz (defasagem de 120°)** com uma taxa de amostragem de 13,5kHz.
+## Configuração de Hardware
 
-## Exemplo de Uso: Gerador de Onda Senoidal Trifásica
+* **Entrada do ADC (ADC1)**: GPIO 4 (Fase R), GPIO 5 (Fase S), GPIO 6 (Fase T)
+* **SPI do DAC (SPI2)**: MOSI (GPIO 11), SCK (GPIO 12), LDAC (GPIO 14), CS1 (GPIO 10), CS2 (GPIO 9)
 
-O exemplo fornecido em `main.c` demonstra o padrão RTOS "Processamento Diferido de Interrupção" (Deferred Interrupt Processing). Ele usa um timer de hardware de alta frequência (13,5kHz) para acordar uma tarefa FreeRTOS de prioridade máxima. Isso garante um determinismo de tempo enquanto mantém a ISR (Rotina de Serviço de Interrupção) limpa, evitando a corrupção de contexto da FPU que ocorreria se a matemática de ponto flutuante fosse usada dentro da própria ISR.
+## Como Compilar e Rodar
 
-### Configuração de Hardware
-
-Por padrão, o componente usa os seguintes pinos (configuráveis via `menuconfig` do ESP-IDF):
-
-* **MOSI**: GPIO 11
-* **SCK**: GPIO 12
-* **LDAC**: GPIO 14
-* **CS1** (Chip 1): GPIO 10
-* **CS2** (Chip 2): GPIO 9
-
-*Nota: O pino CS de hardware do periférico SPI é intencionalmente desativado (`spics_io_num = -1`). O componente controla manualmente os pinos CS usando comandos rápidos `gpio_ll` para eliminar a enorme sobrecarga do driver causada pela rápida troca de dispositivos.*
-
-### Como Compilar e Rodar
-
-1. Certifique-se de que o seu ambiente ESP-IDF esteja ativo (`. export.sh`).
-2. Compile o projeto:
-   ```bash
-   idf.py build
+1. Clone o projeto.
+2. Crie o arquivo `main/secrets.txt` com base no `secrets.example.txt` preenchendo suas credenciais:
+   ```c
+   #define WIFI_PASS "sua_senha_do_wifi"
+   #define MQTT_PASS "sua_senha_do_mqtt"
    ```
-3. Grave e monitore:
+3. Ative seu ambiente ESP-IDF v5/v6 (`. export.sh`).
+4. Compile e grave:
    ```bash
-   idf.py -p /dev/ttyUSB0 flash monitor
+   idf.py build flash monitor
    ```
-
-## Filosofia de Design e Arquitetura
-
-Para um laço de controle digital rodando a 13,5kHz, a janela de execução é de exatamente **74 microssegundos**. Transações SPI padrão com mutexes do FreeRTOS levam cerca de 25us por chamada. Atualizar 4 canais (2 chips) levaria >100us, o que mataria a Idle Task de fome e dispararia o Watchdog de Tarefas do FreeRTOS (TWDT).
-
-Ao adquirir o barramento SPI permanentemente (`spi_device_acquire_bus`) e utilizar a função `mcp4922_ll_write_channels`, o tempo de execução é reduzido para < 4us. Isso deixa ~70us de tempo livre de CPU para a pesada lógica de controle em ponto flutuante (PI/PID), enquanto neutraliza completamente os travamentos por Watchdog.
 
 ---
 ![SmartSensing.me Logo](https://smartsensing.me/ssme-logo.png)
@@ -73,7 +63,7 @@ Diferente de conteúdos superficiais voltados apenas para cliques, este reposit�
 
 ## 🛠️ Tecnologias
 - **Hardware Target:** ESP32 / ESP32-S3
-- **Framework:** ESP-IDF v5.x
+- **Framework:** ESP-IDF v5.x / v6.x
 - **Linguagem:** C / C++
 - **Simulação:** LTSpice (Modelagem de Sensores)
 

@@ -69,7 +69,7 @@ bool IRAM_ATTR app_control_store_telemetry(uint16_t val_r, uint16_t val_s, uint1
   return false;
 }
 
-void app_control_calc_rms(void) {
+void app_control_calc_rms(float *out_rms_r, float *out_rms_s, float *out_rms_t) {
   float sum_sq_r = 0.0f;
   float sum_sq_s = 0.0f;
   float sum_sq_t = 0.0f;
@@ -101,4 +101,8 @@ void app_control_calc_rms(void) {
   ESP_LOGI(TAG, "Corrente RMS Fase R: %.3f A", rms_r);
   ESP_LOGI(TAG, "Corrente RMS Fase S: %.3f A", rms_s);
   ESP_LOGI(TAG, "Corrente RMS Fase T: %.3f A", rms_t);
+  
+  if (out_rms_r) *out_rms_r = rms_r;
+  if (out_rms_s) *out_rms_s = rms_s;
+  if (out_rms_t) *out_rms_t = rms_t;
 }

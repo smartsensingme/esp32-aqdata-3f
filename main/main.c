@@ -1,3 +1,4 @@
+#include "app_control.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_continuous.h"
@@ -7,7 +8,27 @@
 #include "freertos/task.h"
 #include <math.h>
 #include <stdio.h>
-#include "app_control.h"
+
+#define RUN_WITH_WIFI 1 // Altere para 0 para testar sem Wi-Fi e MQTT
+
+#if RUN_WITH_WIFI
+#include "esp_crt_bundle.h"
+#include "esp_event.h"
+#include "esp_timer.h"
+#include "esp_wifi.h"
+#include "mqtt_client.h"
+#include "nvs_flash.h"
+
+#define WIFI_SSID "defranca.net-6G"
+#define MQTT_BROKER "mqtts://mqtt.smartsensing.me:8883"
+#define MQTT_USER "esp32s3"
+#define MQTT_TOPIC "/ssme/measurement/current"
+// Inclui as senhas a partir de um arquivo ignorado pelo git
+#include "secrets.txt"
+
+// Potência do WI-FI em dBm. Valores menores = menos ruído.
+#define WIFI_DBPOWER 8
+#endif
 
 static const char *TAG = "main";
 
@@ -22,6 +43,9 @@ static mcp4922_context_t dac_ctx;
 
 static TaskHandle_t control_task_handle = NULL;
 static TaskHandle_t rms_task_handle = NULL;
+#if RUN_WITH_WIFI
+static esp_mqtt_client_handle_t mqtt_client = NULL;
+#endif
 
 // ADC Handles
 static adc_continuous_handle_t adc_handle = NULL;
@@ -125,6 +149,10 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   ESP_LOGI(TAG, "Entering DMA Control Loop on Core %d", xPortGetCoreID());
 
   // Acquire bus permanently for ultra-fast writing
+  // O ESP32-S3 possui dois barramentos SPI. Para o laço de controle não ter que
+  // pedir acesso ao barramento a cada interrupção, nós adquirimos um barramento
+  // aqui e não o liberamos mais. Qualquer task extra vai ter que usar o
+  // barramento SPI.
   spi_device_acquire_bus(dac_ctx.spi_handle, portMAX_DELAY);
   uint16_t val[NUM_CHIPS * 2] = {0};
 
@@ -136,10 +164,20 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   ESP_ERROR_CHECK(adc_continuous_start(adc_handle));
 
   // Pre-load pointers and variables into local stack/registers to prevent
-  // literal pool (.rodata) fetches during the fast-path loop.
-  mcp4922_context_t *ctx = &dac_ctx;
+  // cache-misses during the critical IRQ-like loop
   uint16_t *lut = sine_lut;
-  int local_lut_idx = 0; // Para dummy data apenas
+  static uint32_t phase_acc = 0;
+
+  // DDS Phase variables (auto-calibrated later)
+  static uint32_t phase_inc = 18775813;  // default for ~13725 Hz
+  const uint32_t phase_120 = 1431655765; // (2^32) / 3
+  const uint32_t phase_240 = 2863311530; // (2^32) * 2 / 3
+
+  // Auto-calibration variables
+  // Necessário para calcular a freq. de amostragem exata (real_f_loop)
+  static uint64_t calib_start_time = 0;
+  static uint32_t calib_sample_count = 0;
+  static bool dds_calibrated = false;
 
   while (1) {
     // Wait for notification from DMA ISR
@@ -198,49 +236,161 @@ static void IRAM_ATTR control_loop_task(void *arg) {
 
     // Dummy data for sine waves
     // 5. Temporary Actuation: Write Sine Waves to DAC (Bare-Metal)
-    // (Will be replaced by control_action mappings later)
-    int idx_s = local_lut_idx + PHASE_120_OFFSET;
-    if (idx_s >= SINE_POINTS)
-      idx_s -= SINE_POINTS;
+    // --- START OF CRITICAL DETERMINISTIC REGION ---
 
-    int idx_t = local_lut_idx + PHASE_240_OFFSET;
-    if (idx_t >= SINE_POINTS)
-      idx_t -= SINE_POINTS;
+    // 2. Control Math / Sine LUT (DDS Phase Accumulator)
+    // SINE_POINTS is 1024 (2^10), so we shift by 32 - 10 = 22
+    // A mágica do >> 22 é pegar esse número astronômico (2^32) e "espremê-lo"
+    // de volta para um índice pequeno de 0 a 1023 (10 bits) para ler a tabela
+    // na memória instantaneamente, sem usar divisão ou matemática pesada de
+    // ponto flutuante dentro do laço crítico.
+    int idx_r = phase_acc >> 22;
+    int idx_s = (phase_acc + phase_120) >> 22;
+    int idx_t = (phase_acc + phase_240) >> 22;
 
-    val[0] = lut[local_lut_idx]; // Fase R (0 graus)
-    val[1] = lut[idx_s];         // Fase S (120 graus)
-    val[2] = lut[idx_t];         // Fase T (240 graus)
-    val[3] = 0;                  // Unused channel
-    // end of dummy data
+    val[0] = lut[idx_r]; // Fase R (0 graus)
+    val[1] = lut[idx_s]; // Fase S (120 graus)
+    val[2] = lut[idx_t]; // Fase T (240 graus)
+    val[3] = 0;          // Unused channel
 
-    mcp4922_ll_write_channels(ctx, val);
+    // 3. Write to DAC using ultra-fast bare-metal driver
+    mcp4922_ll_write_channels(&dac_ctx, val);
 
-    if (app_control_store_telemetry(val[0], val[1], val[2])) {
-        xTaskNotifyGive(rms_task_handle);
+    // 4. Update phase accumulator for the next cycle
+    phase_acc += phase_inc;
+
+    // 5. DDS Auto-Calibration (measures exact hardware interrupt frequency)
+    if (!dds_calibrated) {
+      if (calib_sample_count == 0) {
+        calib_start_time = esp_timer_get_time();
+      }
+      calib_sample_count++;
+
+      if (calib_sample_count == 20000) { // ~1.5 segundos de medição
+        uint64_t calib_end_time = esp_timer_get_time();
+        float elapsed_sec = (calib_end_time - calib_start_time) / 1000000.0f;
+        float real_f_loop = 20000.0f / elapsed_sec;
+
+        // Ajusta o phase_inc com a taxa exata medida no hardware!
+        phase_inc = (uint32_t)((60.0f * 4294967296.0f) / real_f_loop);
+
+        ESP_LOGI(TAG, "--- DDS CALIBRADO ---");
+        ESP_LOGI(TAG, "Tempo para 20000 amostras: %.4f s", elapsed_sec);
+        ESP_LOGI(TAG, "Freq de Amostragem Real (F_loop): %.2f Hz", real_f_loop);
+        ESP_LOGI(TAG, "Novo Phase Increment: %lu", phase_inc);
+        ESP_LOGI(TAG, "Onda ajustada para EXATOS 60.00 Hz!");
+
+        dds_calibrated = true;
+      }
     }
 
-    local_lut_idx++;
-    if (local_lut_idx >= SINE_POINTS) {
-      local_lut_idx = 0;
+    // --- END OF CRITICAL DETERMINISTIC REGION ---
+
+    if (app_control_store_telemetry(val[0], val[1], val[2])) {
+      xTaskNotifyGive(rms_task_handle);
     }
   }
 }
 
+#if RUN_WITH_WIFI
+static void wifi_event_handler(void *arg, esp_event_base_t event_base,
+                               int32_t event_id, void *event_data) {
+  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    esp_wifi_connect();
+  } else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    esp_wifi_connect();
+    ESP_LOGI(TAG, "Tentando reconectar ao Wi-Fi...");
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+    ESP_LOGI(TAG, "Wi-Fi Conectado! IP: " IPSTR, IP2STR(&event->ip_info.ip));
+  }
+}
+
+static void wifi_init_sta(void) {
+  ESP_ERROR_CHECK(esp_netif_init());
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  esp_netif_create_default_wifi_sta();
+
+  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
+      WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL));
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(
+      IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL));
+
+  wifi_config_t wifi_config = {
+      .sta =
+          {
+              .ssid = WIFI_SSID,
+              .password = WIFI_PASS,
+              .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+          },
+  };
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+  ESP_ERROR_CHECK(esp_wifi_start());
+
+  // CRÍTICO PARA O ADC: Desliga o Modem Sleep para estabilizar o VDD33
+  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+
+  // Limita a potência do rádio para reduzir o ruído sobre o ADC e SPI (unidade
+  // é 0.25 dBm)
+  ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(4 * WIFI_DBPOWER));
+}
+
+static void mqtt_app_start(void) {
+  esp_mqtt_client_config_t mqtt_cfg = {
+      .broker.address.uri = MQTT_BROKER,
+      .broker.verification.crt_bundle_attach = esp_crt_bundle_attach,
+      .credentials.username = MQTT_USER,
+      .credentials.authentication.password = MQTT_PASS,
+  };
+  mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+  esp_mqtt_client_start(mqtt_client);
+}
+#endif
+
 static void rms_calc_task(void *arg) {
   while (1) {
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(4000));
 
     capture_idx = 0;
     capture_requested = true;
 
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    app_control_calc_rms();
+    float rms_r = 0.0f, rms_s = 0.0f, rms_t = 0.0f;
+    app_control_calc_rms(&rms_r, &rms_s, &rms_t);
+
+#if RUN_WITH_WIFI
+    if (mqtt_client != NULL) {
+      char json_payload[100];
+      snprintf(json_payload, sizeof(json_payload),
+               "{\"r\":%.3f,\"s\":%.3f,\"t\":%.3f}", rms_r, rms_s, rms_t);
+      esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC, json_payload, 0, 0, 0);
+      ESP_LOGI(TAG, "MQTT Publicado: %s", json_payload);
+    }
+#endif
   }
 }
 
 void app_main(void) {
   ESP_LOGI(TAG, "Starting Digital Control Loop Architecture (ESP32-S3)");
+
+#if RUN_WITH_WIFI
+  esp_err_t ret_nvs = nvs_flash_init();
+  if (ret_nvs == ESP_ERR_NVS_NO_FREE_PAGES ||
+      ret_nvs == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret_nvs = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret_nvs);
+
+  wifi_init_sta();
+  mqtt_app_start();
+#endif
 
   app_control_init();
 
@@ -264,7 +414,7 @@ void app_main(void) {
   }
 
   // Configure ADC1 Continuous Mode (DMA)
-  // Define frequência de amostragem total para 40500 Hz e o tamanho de um
+  // Define frequência de amostragem total para 41175 Hz e o tamanho de um
   // "Frame" (quadro) é de 3 conversões. Com isso, o hardware do ADC fica
   // rodando sozinho em background. Ele lê R, depois S, depois T. Quando ele
   // junta essas 3 leituras, ele fecha 1 Frame.
@@ -275,7 +425,10 @@ void app_main(void) {
   ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &adc_handle));
 
   adc_continuous_config_t dig_cfg = {
-      .sample_freq_hz = 40500, // 13.5 kHz * 3 channels
+      .sample_freq_hz =
+          40500, // IMPORTANTE: O hardware não consegue gerar 40500 Hz. Ele
+                 // arredonda para 41175 Hz (13.725 kHz por canal). O DDS
+                 // usa 13.725 kHz para cravar 60 Hz.
       .conv_mode = ADC_CONV_SINGLE_UNIT_1,
   };
 

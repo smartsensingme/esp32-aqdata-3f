@@ -10,7 +10,7 @@
 #define OFFSET_T -2.9f
 
 // Constants for Outgoing Control Effort (Telemetry)
-#define RMS_BUFFER_SIZE 675 // 3 ciclos de 60Hz
+#define RMS_BUFFER_SIZE 686 // 3 ciclos de 60Hz @ 13.725 kHz
 
 // Ganho do amplificador de condicionamento do sinal do DAC
 #define OUT_GAIN 2.0f
@@ -29,12 +29,8 @@
 #define PR_A2 0.998f
 #define PR_OFFSET -1.650f
 
-// Indices for phase shifting (3-phase network)
-#define PHASE_0_OFFSET 0
-#define PHASE_120_OFFSET 75  // 120 degrees = 1/3 of 225 points
-#define PHASE_240_OFFSET 150 // 240 degrees = 2/3 of 225 points
-
-#define SINE_POINTS 225
+// SINE LUT configurations for DDS (Direct Digital Synthesis)
+#define SINE_POINTS 1024
 
 typedef struct {
   float e[3]; // Histórico de erros: [0]=atual, [1]=k-1, [2]=k-2
@@ -63,4 +59,4 @@ float calcular_controle_PR(PR_Estado_t *estado, float erro_atual);
 bool app_control_store_telemetry(uint16_t val_r, uint16_t val_s, uint16_t val_t);
 
 // RMS mathematical loop for the Core 0 task
-void app_control_calc_rms(void);
+void app_control_calc_rms(float *rms_r, float *rms_s, float *rms_t);
