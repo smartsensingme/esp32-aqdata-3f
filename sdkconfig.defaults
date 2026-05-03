@@ -1,0 +1,10 @@
+# ==============================================================================
+# Otimizacoes de Tempo Real e IRAM (Evitar Cache Misses no Core 1)
+# ==============================================================================
+
+# Forca as funcoes criticas do FreeRTOS a ficarem na IRAM (Internal RAM)
+CONFIG_FREERTOS_PLACE_FUNCTIONS_INTO_IRAM=y
+
+# Forca o driver do SPI Master e sua ISR a rodarem da IRAM
+CONFIG_SPI_MASTER_IN_IRAM=y
+CONFIG_SPI_MASTER_ISR_IN_IRAM=y
