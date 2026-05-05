@@ -179,6 +179,10 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   static uint32_t calib_sample_count = 0;
   static bool dds_calibrated = false;
 
+  // Phase Skew Compensation variables (First-Order Hold)
+  static float prev_err_r = 0.0f;
+  static float prev_err_t = 0.0f;
+
   while (1) {
     // Wait for notification from DMA ISR
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -223,10 +227,27 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     float err_s = adc_cali_lut[raw_s] - OFFSET_S;
     float err_t = adc_cali_lut[raw_t] - OFFSET_T;
 
+    // --- Phase Skew Compensation via First-Order Hold ---
+    // A fase S (do meio) é a nossa referência de tempo.
+    // A fase R foi lida antes da S, então extrapolamos 1 dt para o FUTURO (+).
+    // A fase T foi lida depois da S, então interpolamos 1 dt para o PASSADO
+    // (-). Nota: O compilador otimiza (1.0f / 3.0f) para uma constante na
+    // compilação.
+    float err_r_aligned = err_r + (err_r - prev_err_r) * (1.0f / 3.0f);
+    float err_s_aligned = err_s;
+    float err_t_aligned = err_t - (err_t - prev_err_t) * (1.0f / 3.0f);
+
+    // Salva os valores reais atuais para a próxima iteração
+    prev_err_r = err_r;
+    prev_err_t = err_t;
+
     // 4. Proportional-Resonant (PR) Controller
-    float control_action_r = calcular_controle_PR(&pr_fase_r, err_r);
-    float control_action_s = calcular_controle_PR(&pr_fase_s, err_s);
-    float control_action_t = calcular_controle_PR(&pr_fase_t, err_t);
+    // Passamos os erros alinhados espacialmente no tempo exato da Fase S
+    // (pr_fase_x é definido no app_control.c e armazena os valosres passados
+    // de erro e ação de controle)
+    float control_action_r = calcular_controle_PR(&pr_fase_r, err_r_aligned);
+    float control_action_s = calcular_controle_PR(&pr_fase_s, err_s_aligned);
+    float control_action_t = calcular_controle_PR(&pr_fase_t, err_t_aligned);
 
     // 5. Real Actuation: Arredondamento e Casting rápido
     val[0] = (uint16_t)(control_action_r + 0.5f);
