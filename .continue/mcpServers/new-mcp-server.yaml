@@ -1,0 +1,20 @@
+name: Espressif MCP Config
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: esp-idf-v6-docs
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - "/home/jalexfranca/.espressif/v6.0/esp-idf/docs"
+      - "/home/jalexfranca/.espressif/v6.0/esp-idf/components"
+    env: {}
+
+  - name: espressif-docs-oficial
+    command: npx
+    args:
+      - -y
+      - "mcp-remote"
+      - "https://mcp.espressif.com/docs"
+    env: {}
