@@ -5,6 +5,8 @@
 /build/
 /managed_components/
 /dependencies.lock
+/.continue/
+/.vscode/
 sdkconfig.old
 .DS_Store
 deploy.sh
