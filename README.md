@@ -2,19 +2,19 @@
 
 *Read this in other languages: [Português](README.pt-br.md)*
 
-An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **hard real-time Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with an auto-calibrating **Direct Digital Synthesis (DDS)** sine wave generator and isolated Wi-Fi/MQTT telemetry.
+An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **hard real-time Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with a fixed-rate 60 Hz sine-wave lookup table and isolated Wi-Fi/MQTT telemetry.
 
 ## Core Architecture
 
 To guarantee strict determinism (microsecond latency) without triggering RTOS watchdogs or stalling under heavy network loads, the system leverages asymmetric multicore processing:
 
-- **Core 1 (Real-Time Control Loop):** Completely isolated from the network stack. Driven by the hardware ADC Continuous Mode (via DMA) at ~13.7kHz. Executes the Proportional-Resonant (PR) math, DDS phase accumulation, and writes directly to the physical SPI hardware FIFO (`mcp4922_ll_write_channels`) in `< 4us`.
+- **Core 1 (Real-Time Control Loop):** Completely isolated from the network stack. Driven by the hardware ADC Continuous Mode (via DMA) at 14.4kHz per phase. Executes the Proportional-Resonant (PR) math, advances a 240-sample sine LUT, and writes directly to the physical SPI hardware FIFO (`mcp4922_ll_write_channels`) in `< 4us`.
 - **Core 0 (Telemetry & Networking):** Runs the FreeRTOS Wi-Fi, TLS, and MQTT stacks. Calculates RMS currents over 3-cycle windows in the background and publishes JSON payloads securely (MQTTS) without stealing CPU cycles from the control loop.
 
 ## Key Features
 
 - **Continuous ADC DMA Triggering**: Replaces traditional `gptimer` interrupts with hardware DMA callbacks, ensuring the control loop is perfectly synchronized with physical analog sampling.
-- **Auto-Calibrating DDS Phase Accumulator**: Bypasses the ESP32-S3's rigid integer clock dividers. It dynamically measures the true hardware interrupt frequency using `esp_timer` over the first 20,000 samples and automatically adjusts the 32-bit phase increment to guarantee a **perfect 60.00 Hz** output sine wave.
+- **Exact 60 Hz LUT Cadence**: The ADC controller is configured for 14.4kHz per phase, yielding exactly 240 samples per 60Hz cycle. A 240-sample LUT advances by one entry per frame, with 80- and 160-sample offsets for the other phases.
 - **Bare-Metal SPI DAC Driver**: Bypasses the ESP-IDF abstraction layer for the MCP4922 12-bit Dual DAC. Eliminates FreeRTOS locks and context checks, reducing transmission latency from >100us to **~3us**.
 - **Proportional-Resonant (PR) Controller**: Industrial-grade control structure natively tracking 60Hz AC signals with zero steady-state error.
 - **Wi-Fi Power Management & MQTTS**: Wi-Fi Tx power is attenuated (`WIFI_DBPOWER`) and Power Save is disabled to prevent hardware brownouts and RF cross-talk from corrupting the sensitive analog measurements.

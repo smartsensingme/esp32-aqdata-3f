@@ -986,21 +986,6 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# MCP4922 Example Configuration
-#
-# default:
-CONFIG_MCP4922_MOSI_PIN=11
-# default:
-CONFIG_MCP4922_SCK_PIN=12
-# default:
-CONFIG_MCP4922_CS1_PIN=10
-# default:
-CONFIG_MCP4922_CS2_PIN=9
-# default:
-CONFIG_MCP4922_LDAC_PIN=14
-# end of MCP4922 Example Configuration
-
-#
 # Compiler options
 #
 # default:
@@ -3610,6 +3595,21 @@ CONFIG_WL_SECTOR_SIZE_4096=y
 # default:
 CONFIG_WL_SECTOR_SIZE=4096
 # end of Wear Levelling
+
+#
+# MCP4922 Configuration
+#
+# default:
+CONFIG_MCP4922_MOSI_PIN=11
+# default:
+CONFIG_MCP4922_SCK_PIN=12
+# default:
+CONFIG_MCP4922_CS1_PIN=10
+# default:
+CONFIG_MCP4922_CS2_PIN=9
+# default:
+CONFIG_MCP4922_LDAC_PIN=14
+# end of MCP4922 Configuration
 
 #
 # ESP-MQTT Configurations

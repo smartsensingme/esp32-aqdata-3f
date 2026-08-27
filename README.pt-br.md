@@ -2,19 +2,19 @@
 
 *Leia em outros idiomas: [English](README.md)*
 
-Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) de tempo real rígido (hard real-time)** para sistemas de rede trifásica (ex: inversores), acoplado a um gerador de onda senoidal via **DDS (Direct Digital Synthesis) com Auto-Calibração** e telemetria Wi-Fi/MQTT totalmente isolada.
+Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) de tempo real rígido (hard real-time)** para sistemas de rede trifásica (ex: inversores), acoplado a uma tabela de seno de 60 Hz com taxa fixa e telemetria Wi-Fi/MQTT totalmente isolada.
 
 ## Arquitetura Central
 
 Para garantir um determinismo absoluto (latência na casa dos microssegundos) sem disparar watchdogs do RTOS ou sofrer engasgos sob tráfego intenso de rede, o sistema utiliza processamento multicore assimétrico:
 
-- **Core 1 (Laço de Controle de Tempo Real):** Completamente isolado do stack de rede. Acionado pelo modo Contínuo do ADC em hardware (via DMA) a ~13,7 kHz. Executa a matemática do Controlador Proporcional-Ressonante (PR), o acumulador de fase do DDS e escreve diretamente no FIFO físico do SPI (`mcp4922_ll_write_channels`) em `< 4us`.
+- **Core 1 (Laço de Controle de Tempo Real):** Completamente isolado do stack de rede. Acionado pelo modo Contínuo do ADC em hardware (via DMA) a 14,4 kHz por fase. Executa a matemática do Controlador Proporcional-Ressonante (PR), avança uma LUT senoidal de 240 amostras e escreve diretamente no FIFO físico do SPI (`mcp4922_ll_write_channels`) em `< 4us`.
 - **Core 0 (Telemetria e Rede):** Roda o FreeRTOS com o stack de Wi-Fi, TLS e MQTT. Calcula as correntes RMS em janelas móveis de 3 ciclos em background e publica payloads JSON de forma segura (MQTTS), sem roubar nem um ciclo de CPU do laço de controle.
 
 ## Principais Características
 
 - **Disparo Contínuo via DMA do ADC**: Substitui as interrupções tradicionais de `gptimer` por callbacks de hardware do DMA, garantindo que o laço de controle esteja em perfeita sincronia com a amostragem analógica do mundo físico.
-- **Acumulador de Fase DDS Auto-Calibrado**: Contorna a imprecisão dos divisores de clock inteiros do ESP32-S3. Ele mede dinamicamente a frequência real das interrupções do hardware usando o `esp_timer` ao longo das primeiras 20.000 amostras e ajusta automaticamente o incremento de fase de 32-bits para garantir uma onda senoidal de **exatos 60.00 Hz**.
+- **Cadência exata de 60 Hz por LUT**: O controlador ADC é configurado para 14,4 kHz por fase, produzindo exatamente 240 amostras por ciclo de 60 Hz. Uma LUT de 240 amostras avança uma posição por frame, com deslocamentos de 80 e 160 amostras para as demais fases.
 - **Driver SPI DAC em Bare-Metal**: Ignora a camada de abstração do ESP-IDF para o DAC Duplo de 12 bits MCP4922. Elimina bloqueios do FreeRTOS e trocas de contexto, reduzindo a latência de transmissão de >100us para **~3us**.
 - **Controlador Proporcional-Ressonante (PR)**: Estrutura de controle de nível industrial que rastreia nativamente sinais AC de 60Hz com erro de estado estacionário nulo.
 - **Gestão de Energia Wi-Fi & MQTTS**: A potência de transmissão do Wi-Fi é atenuada (`WIFI_DBPOWER`) e o Power Save é desativado para evitar quedas de tensão (brownouts) no hardware e impedir que o ruído cruzado de RF (cross-talk) corrompa as medições analógicas sensíveis.

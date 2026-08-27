@@ -1,8 +1,9 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "esp_attr.h"
+#include "pr_controller.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 // Constants for conditioning
 #define OFFSET_R -2.9f
@@ -10,53 +11,66 @@
 #define OFFSET_T -2.9f
 
 // Constants for Outgoing Control Effort (Telemetry)
-#define RMS_BUFFER_SIZE 686 // 3 ciclos de 60Hz @ 13.725 kHz
+#define RMS_BUFFER_SIZE 720 // 3 ciclos de 60Hz @ 14.4 kHz
 
-// Ganho do amplificador de condicionamento do sinal do DAC
-#define OUT_GAIN 2.0f
-// Offset do amplificador de condicionamento do sinal do DAC
-#define OUT_OFFSET -3.3f
+// Faixa bipolar representada pelos 12 bits enviados ao DAC.
+#define CONTROL_OUTPUT_MIN_V -6.0f
+#define CONTROL_OUTPUT_MAX_V 6.0f
+#define DAC_MAX_CODE 4095U
 // Carga (Ohms) que transforma a tensão do condicionador em corrente.
 #define R_LOAD 150.0f
 // Números de espiras da bonina
 #define N_COIN_TURNS 2000.0f
 
-// PR Controller Constants (Calculated via Octave for Bits Domain)
-#define PR_B0 12.532f
-#define PR_B1 -24.115f
-#define PR_B2 11.601f
-#define PR_A1 -1.995f
-#define PR_A2 0.998f
-#define PR_OFFSET -1.650f
-
-// SINE LUT configurations for DDS (Direct Digital Synthesis)
-#define SINE_POINTS 1024
-
-typedef struct {
-  float e[3]; // Histórico de erros: [0]=atual, [1]=k-1, [2]=k-2
-  float u[3]; // Histórico de ações: [0]=atual, [1]=k-1, [2]=k-2
-} PR_Estado_t;
-
 // State exposed to main.c
-extern PR_Estado_t pr_fase_r;
-extern PR_Estado_t pr_fase_s;
-extern PR_Estado_t pr_fase_t;
-
-// Dummy Sine Wave LUT
-extern uint16_t sine_lut[SINE_POINTS];
+extern pr_controller_state_t pr_fase_r;
+extern pr_controller_state_t pr_fase_s;
+extern pr_controller_state_t pr_fase_t;
 
 // Telemetry state exposed for task notification trigger
 extern volatile bool capture_requested;
 extern volatile int capture_idx;
 
-// Initializes the PR states and pre-computes the Sine LUT
+/**
+ * @brief Inicializa os controladores PR das tres fases.
+ *
+ * Zera, de forma independente, os estados dos controladores associados as
+ * fases R, S e T. Deve ser chamada antes de iniciar o laco de controle.
+ */
 void app_control_init(void);
 
-// Encapsulates the PR equation
-float calcular_controle_PR(PR_Estado_t *estado, float erro_atual);
+/**
+ * @brief Calcula e limita a acao do controlador PR multiressonante.
+ *
+ * Processa o erro atual usando o estado da fase indicada e satura a soma das
+ * parcelas proporcional e ressonantes na faixa fisica permitida pelo atuador.
+ * Os estados internos dos ressonadores sao atualizados antes da saturacao.
+ *
+ * @param estado Ponteiro para o estado do controlador da fase processada.
+ * @param erro_atual Erro filtrado atual da malha, em volts.
+ * @return Acao de controle saturada entre CONTROL_OUTPUT_MIN_V e
+ *         CONTROL_OUTPUT_MAX_V, em volts.
+ */
+float calcular_controle_PR(pr_controller_state_t *estado, float erro_atual);
+
+/**
+ * @brief Converte uma acao de controle bipolar para o codigo do DAC de 12 bits.
+ *
+ * Aplica saturacao defensiva e realiza o mapeamento linear:
+ * CONTROL_OUTPUT_MIN_V -> 0, 0 V -> 2048 e CONTROL_OUTPUT_MAX_V -> 4095.
+ * O resultado e arredondado para o inteiro mais proximo.
+ *
+ * @note O codigo representa a tensao bipolar que devera existir depois do
+ *       circuito analogico de condicionamento. O MCP4922 permanece unipolar.
+ *
+ * @param control_voltage Acao de controle desejada, em volts.
+ * @return Codigo inteiro de 12 bits no intervalo [0, DAC_MAX_CODE].
+ */
+uint16_t app_control_voltage_to_dac(float control_voltage);
 
 // Encapsulates telemetry storage (returns true when buffer is full)
-bool app_control_store_telemetry(uint16_t val_r, uint16_t val_s, uint16_t val_t);
+bool app_control_store_telemetry(uint16_t val_r, uint16_t val_s,
+                                 uint16_t val_t);
 
 // RMS mathematical loop for the Core 0 task
 void app_control_calc_rms(float *rms_r, float *rms_s, float *rms_t);

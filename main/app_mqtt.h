@@ -1,6 +1,6 @@
 #pragma once
 
-#define RUN_WITH_WIFI 1 // Altere para 0 para testar sem Wi-Fi e MQTT
+#define RUN_WITH_WIFI 0 // Altere para 0 para testar sem Wi-Fi e MQTT
 
 #if RUN_WITH_WIFI
 
