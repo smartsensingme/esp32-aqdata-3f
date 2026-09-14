@@ -1,12 +1,16 @@
 #include "app_control.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <math.h>
 
 static const char *TAG = "app_control";
 
-pr_controller_state_t pr_fase_r, pr_fase_s, pr_fase_t;
+esp_pr_t pr_fase_r, pr_fase_s, pr_fase_t;
+
+// Coeficientes compartilhados em RAM interna; estados separados por fase.
+static DRAM_ATTR esp_pr_model_t pr_model;
 
 volatile bool capture_requested = false;
 volatile int capture_idx = 0;
@@ -15,25 +19,43 @@ static uint16_t dac_history_s[RMS_BUFFER_SIZE];
 static uint16_t dac_history_t[RMS_BUFFER_SIZE];
 
 void app_control_init(void) {
-  pr_controller_init(&pr_fase_r);
-  pr_controller_init(&pr_fase_s);
-  pr_controller_init(&pr_fase_t);
+  // Sintonia original do projeto, com Tustin prewarped por frequencia.
+  const unsigned orders[] = {1, 3, 5, 7};
+  const float gains[] = {60000.0f, 6000.0f, 10000.0f, 13000.0f};
+  const float damping[] = {5.0f, 5.0f, 5.0f, 5.0f};
+  enum { RESONATOR_COUNT = sizeof(orders) / sizeof(orders[0]) };
+  esp_pr_resonator_config_t branches[RESONATOR_COUNT];
+  ESP_ERROR_CHECK(esp_pr_make_harmonics(branches, RESONATOR_COUNT, 60.0f,
+                                      orders, gains, damping));
+  const esp_pr_config_t config = {
+      .sample_rate_hz = 14400.0f,
+      .kp = 5.0f,
+      .output_min = CONTROL_OUTPUT_MIN_V,
+      .output_max = CONTROL_OUTPUT_MAX_V,
+      .anti_windup_tracking_time_s = CONFIG_APP_PR_TRACKING_TIME_US * 1e-6f,
+      .resonators = branches,
+      .resonator_count = RESONATOR_COUNT,
+  };
+  ESP_ERROR_CHECK(esp_pr_prepare(&pr_model, &config));
+  ESP_ERROR_CHECK(esp_pr_init(&pr_fase_r, &pr_model));
+  ESP_ERROR_CHECK(esp_pr_init(&pr_fase_s, &pr_model));
+  ESP_ERROR_CHECK(esp_pr_init(&pr_fase_t, &pr_model));
 }
 
-float IRAM_ATTR calcular_controle_PR(pr_controller_state_t *estado,
-                                     float erro_atual) {
-  float output = pr_controller_process(estado, erro_atual);
-
-  if (output > CONTROL_OUTPUT_MAX_V) {
-    output = CONTROL_OUTPUT_MAX_V;
-  } else if (output < CONTROL_OUTPUT_MIN_V) {
-    output = CONTROL_OUTPUT_MIN_V;
+float IRAM_ATTR app_control_process_phase(esp_pr_t *controller, float error) {
+  float output = 0.0f;
+  if (esp_pr_update(controller, error, 0.0f, &output) != ESP_OK) {
+    // Falha numerica: recupera apenas esta fase e comanda 0 V bipolar.
+    esp_pr_reset(controller);
+    return 0.0f;
   }
-
   return output;
 }
 
 uint16_t IRAM_ATTR app_control_voltage_to_dac(float control_voltage) {
+  if (!isfinite(control_voltage)) {
+    control_voltage = 0.0f;
+  }
   if (control_voltage > CONTROL_OUTPUT_MAX_V) {
     control_voltage = CONTROL_OUTPUT_MAX_V;
   } else if (control_voltage < CONTROL_OUTPUT_MIN_V) {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "esp_attr.h"
-#include "pr_controller.h"
+#include "esp_pr.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -23,9 +23,9 @@
 #define N_COIN_TURNS 2000.0f
 
 // State exposed to main.c
-extern pr_controller_state_t pr_fase_r;
-extern pr_controller_state_t pr_fase_s;
-extern pr_controller_state_t pr_fase_t;
+extern esp_pr_t pr_fase_r;
+extern esp_pr_t pr_fase_s;
+extern esp_pr_t pr_fase_t;
 
 // Telemetry state exposed for task notification trigger
 extern volatile bool capture_requested;
@@ -44,21 +44,23 @@ void app_control_init(void);
  *
  * Processa o erro atual usando o estado da fase indicada e satura a soma das
  * parcelas proporcional e ressonantes na faixa fisica permitida pelo atuador.
- * Os estados internos dos ressonadores sao atualizados antes da saturacao.
+ * A diferenca de saturacao realimenta os estados ressonantes por anti-windup.
+ * Em falha numerica, reinicializa apenas esta fase e retorna 0 V.
  *
- * @param estado Ponteiro para o estado do controlador da fase processada.
- * @param erro_atual Erro filtrado atual da malha, em volts.
+ * @param controller Ponteiro para o estado do controlador da fase processada.
+ * @param error Erro filtrado atual da malha, em volts.
  * @return Acao de controle saturada entre CONTROL_OUTPUT_MIN_V e
  *         CONTROL_OUTPUT_MAX_V, em volts.
  */
-float calcular_controle_PR(pr_controller_state_t *estado, float erro_atual);
+float app_control_process_phase(esp_pr_t *controller, float error);
 
 /**
  * @brief Converte uma acao de controle bipolar para o codigo do DAC de 12 bits.
  *
  * Aplica saturacao defensiva e realiza o mapeamento linear:
  * CONTROL_OUTPUT_MIN_V -> 0, 0 V -> 2048 e CONTROL_OUTPUT_MAX_V -> 4095.
- * O resultado e arredondado para o inteiro mais proximo.
+ * O resultado e arredondado para o inteiro mais proximo. Entradas nao finitas
+ * produzem o codigo de 0 V (2048).
  *
  * @note O codigo representa a tensao bipolar que devera existir depois do
  *       circuito analogico de condicionamento. O MCP4922 permanece unipolar.

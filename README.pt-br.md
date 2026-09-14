@@ -8,7 +8,7 @@ Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-
 
 Para garantir um determinismo absoluto (latência na casa dos microssegundos) sem disparar watchdogs do RTOS ou sofrer engasgos sob tráfego intenso de rede, o sistema utiliza processamento multicore assimétrico:
 
-- **Core 1 (Laço de Controle de Tempo Real):** Completamente isolado do stack de rede. Acionado pelo modo Contínuo do ADC em hardware (via DMA) a 14,4 kHz por fase. Executa a matemática do Controlador Proporcional-Ressonante (PR), avança uma LUT senoidal de 240 amostras e escreve diretamente no FIFO físico do SPI (`mcp4922_ll_write_channels`) em `< 4us`.
+- **Core 1 (Laço de Controle de Tempo Real):** Completamente isolado do stack de rede. Acionado pelo modo Contínuo do ADC em hardware (via DMA) a 14,4 kHz por fase. Executa a matemática do Controlador Proporcional-Ressonante (PR), avança uma LUT senoidal de 240 amostras e escreve diretamente no FIFO físico do SPI (`mcp4922_ll_write_channels`). O tempo total com anti-windup deve ser medido em bancada.
 - **Core 0 (Telemetria e Rede):** Roda o FreeRTOS com o stack de Wi-Fi, TLS e MQTT. Calcula as correntes RMS em janelas móveis de 3 ciclos em background e publica payloads JSON de forma segura (MQTTS), sem roubar nem um ciclo de CPU do laço de controle.
 
 ## Principais Características
@@ -16,13 +16,14 @@ Para garantir um determinismo absoluto (latência na casa dos microssegundos) se
 - **Disparo Contínuo via DMA do ADC**: Substitui as interrupções tradicionais de `gptimer` por callbacks de hardware do DMA, garantindo que o laço de controle esteja em perfeita sincronia com a amostragem analógica do mundo físico.
 - **Cadência exata de 60 Hz por LUT**: O controlador ADC é configurado para 14,4 kHz por fase, produzindo exatamente 240 amostras por ciclo de 60 Hz. Uma LUT de 240 amostras avança uma posição por frame, com deslocamentos de 80 e 160 amostras para as demais fases.
 - **Driver SPI DAC em Bare-Metal**: Ignora a camada de abstração do ESP-IDF para o DAC Duplo de 12 bits MCP4922. Elimina bloqueios do FreeRTOS e trocas de contexto, reduzindo a latência de transmissão de >100us para **~3us**.
-- **Controlador Proporcional-Ressonante (PR)**: Estrutura de controle de nível industrial que rastreia nativamente sinais AC de 60Hz com erro de estado estacionário nulo.
+- **Controlador Proporcional-Ressonante (PR)**: Componente `esp_pr` multirressonante amortecido, com ganho proporcional comum, sintonia por ramo, saturação e anti-windup configurável. Veja [API, equações e testes](components/esp_pr/README.md).
 - **Gestão de Energia Wi-Fi & MQTTS**: A potência de transmissão do Wi-Fi é atenuada (`WIFI_DBPOWER`) e o Power Save é desativado para evitar quedas de tensão (brownouts) no hardware e impedir que o ruído cruzado de RF (cross-talk) corrompa as medições analógicas sensíveis.
 
 ## Estrutura do Projeto
 
 * `components/esp_mcp4922/`: O componente central que contém as implementações de alto nível e bare-metal (`ll`) para o MCP4922.
-* `main/app_control.c`: O cérebro matemático do projeto. Contém as equações do Controlador PR, cálculos de RMS e a geração da Tabela de Seno (LUT).
+* `components/esp_pr/`: Controlador PR reutilizável, estados independentes e testes no computador.
+* `main/app_control.c`: Configuração e chamadas diretas ao `esp_pr`, estados das três fases, conversão bipolar para DAC e cálculos de RMS.
 * `main/main.c`: O orquestrador. Configura a arquitetura dual-core, o DMA do ADC, as conexões Wi-Fi/MQTT e executa a seção crítica de altíssima velocidade.
 * `main/secrets.txt`: (Criado pelo usuário) Contém as credenciais de Wi-Fi e MQTT, ignoradas pelo controle de versão.
 

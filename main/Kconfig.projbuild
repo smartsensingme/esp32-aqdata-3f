@@ -1,0 +1,13 @@
+menu "Application PR controller"
+
+config APP_PR_TRACKING_TIME_US
+    int "Anti-windup tracking time (microseconds; 0 disables)"
+    range 0 10000000
+    default 10000
+    help
+        Common tracking time for the resonant branches. The initial 10 ms
+        value is provisional and must be validated with the physical plant.
+        Smaller values produce stronger state correction during saturation.
+        Zero reproduces the linear controller with output limiting only.
+
+endmenu

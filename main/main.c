@@ -422,13 +422,11 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     float err_s_filtered = fir_pmr_process(&fir_fase_s, err_s_aligned);
     float err_t_filtered = fir_pmr_process(&fir_fase_t, err_t_aligned);
 
-    // 5. Proportional-Resonant (PR) Controller
-    // Passamos os erros alinhados e filtrados para cada controlador.
-    // (pr_fase_x é definido no app_control.c e armazena os valosres passados
-    // de erro e ação de controle)
-    float control_action_r = calcular_controle_PR(&pr_fase_r, err_r_filtered);
-    float control_action_s = calcular_controle_PR(&pr_fase_s, err_s_filtered);
-    float control_action_t = calcular_controle_PR(&pr_fase_t, err_t_filtered);
+    // 5. esp_pr: estados independentes por fase, saturacao e anti-windup.
+    // app_control_process_phase chama esp_pr_update e trata falhas numericas.
+    float control_action_r = app_control_process_phase(&pr_fase_r, err_r_filtered);
+    float control_action_s = app_control_process_phase(&pr_fase_s, err_s_filtered);
+    float control_action_t = app_control_process_phase(&pr_fase_t, err_t_filtered);
 
     // 6. Map [-6 V, +6 V] to the unsigned 12-bit DAC range.
     val[0] = app_control_voltage_to_dac(control_action_r);
