@@ -18,13 +18,22 @@ To guarantee strict determinism (microsecond latency) without triggering RTOS wa
 - **Bare-Metal SPI DAC Driver**: Bypasses the ESP-IDF abstraction layer for the MCP4922 12-bit Dual DAC. Eliminates FreeRTOS locks and context checks, reducing transmission latency from >100us to **~3us**.
 - **Proportional-Resonant (PR) Controller**: Reusable damped multi-resonant `esp_pr` component with a shared proportional gain, per-branch tuning, output limits and configurable anti-windup. See [API, equations and tests](components/esp_pr/README.md).
 - **Wi-Fi Power Management & MQTTS**: Wi-Fi Tx power is attenuated (`WIFI_DBPOWER`) and Power Save is disabled to prevent hardware brownouts and RF cross-talk from corrupting the sensitive analog measurements.
+- **Real-Time Diagnostics**: `esp_rt_diagnostics` accumulates timings, overruns, and ADC events in the control task. `esp_rt_diagnostics_reporter` moves snapshots to a Core 0 task and classifies windows that may have been affected by reporter logging.
 
 ## Project Structure
 
 * `components/esp_mcp4922/`: The core driver component containing the high-level and bare-metal (`ll`) implementations for the MCP4922.
-* `main/app_control.c`: The mathematical brain of the project. Contains the PR Controller equations, RMS calculations, and Sine Wave LUT generations.
+* `components/esp_pr/`: Reusable multi-resonant PR controller and host tests.
+* `main/app_control.c`: Application tuning, direct `esp_pr` integration, DAC conversion, and RMS calculations.
+* `main/app_diagnostics.c`: Control-loop diagnostics, ADC events, and asynchronous Core 0 presentation.
 * `main/main.c`: The orchestrator. Configures the dual-core architecture, ADC DMA, Wi-Fi/MQTT connections, and runs the high-speed critical section.
 * `main/secrets.txt`: (User created) Contains Wi-Fi and MQTT credentials excluded from version control.
+
+## Control-loop diagnostics
+
+Every five-second window reports window and lifetime counters. `pool_lost` is confirmed ADC pool loss; `backlog` is recoverable accumulated work; `read_errors` means a notification did not yield a complete frame; and `cycle_overruns` compares CPU cycles with the exact 1/14400 s budget. Component microsecond deadlines are rounded up to 70 us, while cycle accounting preserves the approximately 69.44 us boundary.
+
+Use `quiet` windows as the normal-operation baseline. `log-affected` windows may include disturbance from earlier reporter output. ISR-to-task latency is explicitly `unmeasured`: this application drains one notification at a time and has no timestamp queue for accumulated frames, so assigning the newest timestamp would be ambiguous.
 
 ## Hardware Setup
 

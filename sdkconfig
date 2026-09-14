@@ -3619,6 +3619,17 @@ CONFIG_MCP4922_LDAC_PIN=14
 # end of MCP4922 Configuration
 
 #
+# ESP Real-Time Diagnostics
+#
+# default:
+CONFIG_ESP_RT_DIAGNOSTICS_ENABLE=y
+# default:
+CONFIG_ESP_RT_DIAGNOSTICS_DETAILED_TIMING=y
+# default:
+CONFIG_ESP_RT_DIAGNOSTICS_WINDOW_MS=5000
+# end of ESP Real-Time Diagnostics
+
+#
 # ESP-MQTT Configurations
 #
 # default:
