@@ -17,6 +17,7 @@ Para garantir um determinismo absoluto (latência na casa dos microssegundos) se
 - **Cadência exata de 60 Hz por LUT**: O controlador ADC é configurado para 14,4 kHz por fase, produzindo exatamente 240 amostras por ciclo de 60 Hz. Uma LUT de 240 amostras avança uma posição por frame, com deslocamentos de 80 e 160 amostras para as demais fases.
 - **Driver SPI DAC em Bare-Metal**: Ignora a camada de abstração do ESP-IDF para o DAC Duplo de 12 bits MCP4922. Elimina bloqueios do FreeRTOS e trocas de contexto, reduzindo a latência de transmissão de >100us para **~3us**.
 - **Controlador Proporcional-Ressonante (PR)**: Componente `esp_pr` multirressonante amortecido, com ganho proporcional comum, sintonia por ramo, saturação e anti-windup configurável. Veja [API, equações e testes](components/esp_pr/README.md).
+- **FIR para tempo real**: Componente reutilizável `esp_fir` para filtros FIR reais arbitrários, com núcleos específicos para simetria e antissimetria, históricos espelhados fornecidos pelo chamador, processamento em IRAM e ausência de alocação ou módulo no caminho por amostra. A aplicação chama diretamente o núcleo simétrico para seu filtro de 15 coeficientes.
 - **Gestão de Energia Wi-Fi & MQTTS**: A potência de transmissão do Wi-Fi é atenuada (`WIFI_DBPOWER`) e o Power Save é desativado para evitar quedas de tensão (brownouts) no hardware e impedir que o ruído cruzado de RF (cross-talk) corrompa as medições analógicas sensíveis.
 - **Diagnóstico de Tempo Real**: `esp_rt_diagnostics` acumula tempos, overruns e eventos na task de controle. `esp_rt_diagnostics_reporter` transfere snapshots para uma task no Core 0 e classifica janelas possivelmente afetadas pelos próprios logs.
 
@@ -24,7 +25,9 @@ Para garantir um determinismo absoluto (latência na casa dos microssegundos) se
 
 * `components/esp_mcp4922/`: O componente central que contém as implementações de alto nível e bare-metal (`ll`) para o MCP4922.
 * `components/esp_pr/`: Controlador PR reutilizável, estados independentes e testes no computador.
+* `components/esp_fir/`: Núcleos FIR geral, simétrico e antissimétrico reutilizáveis e testes no computador.
 * `main/app_control.c`: Configuração e chamadas diretas ao `esp_pr`, estados das três fases, conversão bipolar para DAC e cálculos de RMS.
+* `main/app_fir.c`: Coeficientes FIR, históricos das três fases e benchmark opcional de ciclos no alvo.
 * `main/app_diagnostics.c`: Integração do diagnóstico, eventos do ADC e apresentação assíncrona no Core 0.
 * `main/main.c`: O orquestrador. Configura a arquitetura dual-core, o DMA do ADC, as conexões Wi-Fi/MQTT e executa a seção crítica de altíssima velocidade.
 * `main/secrets.txt`: (Criado pelo usuário) Contém as credenciais de Wi-Fi e MQTT, ignoradas pelo controle de versão.
@@ -34,6 +37,18 @@ Para garantir um determinismo absoluto (latência na casa dos microssegundos) se
 A cada janela de 5 segundos, o reporter publica contagens da janela e totais desde a inicialização. `pool_lost` é perda confirmada pelo buffer do ADC; `backlog` indica atraso acumulado recuperável; `read_errors` indica que uma notificação não pôde formar um frame completo; e `cycle_overruns` compara o tempo em ciclos de CPU com o período exato de 1/14.400 s. O deadline em microssegundos do componente é arredondado para 70 us, enquanto a comparação em ciclos preserva o limite de aproximadamente 69,44 us.
 
 As janelas `quiet` são a referência para o funcionamento normal. Janelas `log-affected` podem incluir perturbação causada pela apresentação anterior. A latência ISR→task aparece como `unmeasured`: a aplicação drena uma notificação por vez e não mantém uma fila de timestamps por frame, portanto atribuir o último timestamp a frames acumulados produziria uma medida ambígua.
+
+## Comparação do FIR
+
+`APP_FIR_BENCHMARK` executa uma vez na inicialização, antes do ADC e da task de
+controle. Ele envia as mesmas amostras determinísticas a três instâncias do
+filtro original desenrolado manualmente e a três instâncias de
+`esp_fir_process_symmetric()`. O log mostra ciclos por chamada e por frame
+trifásico, o tempo equivalente, a diferença relativa de custo e a maior diferença
+numérica. O resultado reaparece no primeiro relatório de diagnóstico para não se
+perder entre os logs de inicialização. Desabilite a opção depois de obter os resultados para que o linker
+remova o filtro antigo e a memória do benchmark. Em seguida, os diagnósticos
+normais medem o loop completo de 69,44 us com o novo FIR e a carga real.
 
 ## Configuração de Hardware
 

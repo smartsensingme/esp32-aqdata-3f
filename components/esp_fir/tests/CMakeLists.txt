@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.16)
+project(esp_fir_host_tests C)
+enable_testing()
+
+add_executable(test_esp_fir ../esp_fir.c test_esp_fir.c)
+target_include_directories(test_esp_fir PRIVATE ../include)
+target_compile_features(test_esp_fir PRIVATE c_std_11)
+target_compile_options(test_esp_fir PRIVATE -Wall -Wextra -Werror -pedantic -UNDEBUG)
+target_link_libraries(test_esp_fir PRIVATE m)
+add_test(NAME esp_fir COMMAND test_esp_fir)
+
+add_executable(test_fir_pmr_equivalence ../esp_fir.c test_fir_pmr_equivalence.c
+    ../../../main/fir_pmr.c)
+target_include_directories(test_fir_pmr_equivalence PRIVATE
+    ../include ../../../main stubs)
+target_compile_features(test_fir_pmr_equivalence PRIVATE c_std_11)
+target_compile_options(test_fir_pmr_equivalence PRIVATE -Wall -Wextra -Werror -pedantic -UNDEBUG)
+target_link_libraries(test_fir_pmr_equivalence PRIVATE m)
+add_test(NAME fir_pmr_equivalence COMMAND test_fir_pmr_equivalence)

@@ -986,11 +986,13 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# Application PR controller
+# Application control
 #
 # default:
 CONFIG_APP_PR_TRACKING_TIME_US=10000
-# end of Application PR controller
+# default:
+CONFIG_APP_FIR_BENCHMARK=y
+# end of Application control
 
 #
 # Compiler options

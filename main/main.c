@@ -1,5 +1,6 @@
 #include "app_control.h"
 #include "app_diagnostics.h"
+#include "app_fir.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_continuous.h"
@@ -14,7 +15,6 @@
 #include <stdio.h>
 
 #include "app_mqtt.h"
-#include "fir_pmr.h"
 
 static const char *TAG = "main";
 
@@ -260,14 +260,6 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   static float prev_err_r = 0.0f;
   static float prev_err_t = 0.0f;
 
-  // Cada fase precisa de um historico FIR independente.
-  static fir_pmr_state_t fir_fase_r;
-  static fir_pmr_state_t fir_fase_s;
-  static fir_pmr_state_t fir_fase_t;
-  fir_pmr_init(&fir_fase_r);
-  fir_pmr_init(&fir_fase_s);
-  fir_pmr_init(&fir_fase_t);
-
 #if TEST_IS_ON
   uint16_t test_val[NUM_CHIPS * 2] = {0};
   uint32_t test_sine_index = 0;
@@ -382,9 +374,12 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     prev_err_t = err_t;
 
     // 4. FIR: filtra os sinais ja alinhados no instante da fase S.
-    float err_r_filtered = fir_pmr_process(&fir_fase_r, err_r_aligned);
-    float err_s_filtered = fir_pmr_process(&fir_fase_s, err_s_aligned);
-    float err_t_filtered = fir_pmr_process(&fir_fase_t, err_t_aligned);
+    float err_r_filtered =
+        esp_fir_process_symmetric(&fir_fase_r, err_r_aligned);
+    float err_s_filtered =
+        esp_fir_process_symmetric(&fir_fase_s, err_s_aligned);
+    float err_t_filtered =
+        esp_fir_process_symmetric(&fir_fase_t, err_t_aligned);
 
     // 5. esp_pr: estados independentes por fase, saturacao e anti-windup.
     // app_control_process_phase chama esp_pr_update e trata falhas numericas.
@@ -473,6 +468,8 @@ void app_main(void) {
 #endif
 
   app_control_init();
+  app_fir_init();
+  app_fir_benchmark();
 #if TEST_IS_ON
   test_sine_lut_init();
   ESP_LOGW(TAG,
