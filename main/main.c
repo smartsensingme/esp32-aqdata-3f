@@ -469,7 +469,6 @@ void app_main(void) {
 
   app_control_init();
   app_fir_init();
-  app_fir_benchmark();
 #if TEST_IS_ON
   test_sine_lut_init();
   ESP_LOGW(TAG,

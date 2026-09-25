@@ -27,7 +27,7 @@ To guarantee strict determinism (microsecond latency) without triggering RTOS wa
 * `components/esp_pr/`: Reusable multi-resonant PR controller and host tests.
 * `components/esp_fir/`: Reusable general, symmetric, and antisymmetric FIR kernels and host tests.
 * `main/app_control.c`: Application tuning, direct `esp_pr` integration, DAC conversion, and RMS calculations.
-* `main/app_fir.c`: FIR coefficients, three phase histories, and the optional target cycle benchmark.
+* `main/app_fir.c`: FIR coefficients and the three phase filter histories.
 * `main/app_diagnostics.c`: Control-loop diagnostics, ADC events, and asynchronous Core 0 presentation.
 * `main/main.c`: The orchestrator. Configures the dual-core architecture, ADC DMA, Wi-Fi/MQTT connections, and runs the high-speed critical section.
 * `main/secrets.txt`: (User created) Contains Wi-Fi and MQTT credentials excluded from version control.
@@ -37,18 +37,6 @@ To guarantee strict determinism (microsecond latency) without triggering RTOS wa
 Every five-second window reports window and lifetime counters. `pool_lost` is confirmed ADC pool loss; `backlog` is recoverable accumulated work; `read_errors` means a notification did not yield a complete frame; and `cycle_overruns` compares CPU cycles with the exact 1/14400 s budget. Component microsecond deadlines are rounded up to 70 us, while cycle accounting preserves the approximately 69.44 us boundary.
 
 Use `quiet` windows as the normal-operation baseline. `log-affected` windows may include disturbance from earlier reporter output. ISR-to-task latency is explicitly `unmeasured`: this application drains one notification at a time and has no timestamp queue for accumulated frames, so assigning the newest timestamp would be ambiguous.
-
-## FIR comparison
-
-`APP_FIR_BENCHMARK` runs once at boot, before the ADC and control task start. It
-feeds identical deterministic samples to three instances of the original
-hand-unrolled filter and three instances of `esp_fir_process_symmetric()`. The
-log reports cycles per call and per three-phase frame, equivalent time, the
-relative timing difference, and the maximum numerical difference. The result is
-repeated with the first diagnostics report so it is not lost among boot logs. Disable the
-option after collecting results to let the linker discard the legacy filter and
-benchmark storage. The normal diagnostics then measure the complete 69.44 us
-control loop with the new FIR under real workload.
 
 ## Hardware Setup
 

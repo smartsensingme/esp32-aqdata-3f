@@ -28,11 +28,13 @@ inspection, breakpoints, and single-stepping but is not representative of the
 production timing. Before finalizing work:
 
 1. restore `-O3`;
-2. run the portable host tests, including the legacy equivalence test;
+2. run the portable host tests, which compare each kernel with an independent
+   direct-convolution reference;
 3. build the ESP-IDF application;
 4. confirm the active processing kernel remains in IRAM;
-5. for hot-path changes, rerun `APP_FIR_BENCHMARK` on the target and compare
-   numerical error as well as cycles.
+5. for hot-path changes, measure the affected kernel on the target with a
+   temporary, controlled benchmark and add or update numerical reference tests
+   as appropriate. Do not leave benchmarking code in the production app.
 
 Do not add `-ffast-math` without explicit numerical tests covering every
 supported structure and application approval for its altered NaN, infinity,

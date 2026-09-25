@@ -1,7 +1,6 @@
 #include "app_diagnostics.h"
 
 #if CONFIG_ESP_RT_DIAGNOSTICS_ENABLE
-#include "app_fir.h"
 #include "esp_cpu.h"
 #include "esp_log.h"
 #include "esp_rt_diagnostics.h"
@@ -57,8 +56,6 @@ static void report_window(const esp_rt_diag_snapshot_t *s, const void *data,
     adc_rate_callback();
     adc_rate_callback = NULL;
   }
-  if (s->window_id == 1U)
-    app_fir_report_benchmark();
   ESP_LOGI(TAG,
            "window=%" PRIu64 " [%s] duration=%" PRIu32 "us attempts=%" PRIu32
            " rate=%.1f/%.1fHz processed=%.1fHz deadline_overruns=%" PRIu32

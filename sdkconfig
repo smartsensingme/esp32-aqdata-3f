@@ -990,8 +990,6 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # default:
 CONFIG_APP_PR_TRACKING_TIME_US=10000
-# default:
-CONFIG_APP_FIR_BENCHMARK=y
 # end of Application control
 
 #

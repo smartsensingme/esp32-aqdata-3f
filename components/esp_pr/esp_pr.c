@@ -3,6 +3,8 @@
 #include <float.h>
 #include <math.h>
 
+/* Internal validation shared by harmonic construction and model preparation.
+ * The Nyquist constraint depends on sample rate and is checked by prepare. */
 static bool branch_valid(const esp_pr_resonator_config_t *b) {
   return isfinite(b->frequency_hz) && b->frequency_hz > 0.0f &&
          isfinite(b->kr) && b->kr >= 0.0f && isfinite(b->damping_hz) &&
@@ -13,6 +15,8 @@ esp_err_t esp_pr_make_harmonics(esp_pr_resonator_config_t *destination,
                                 size_t count, float fundamental_hz,
                                 const unsigned *orders, const float *kr,
                                 const float *damping_hz) {
+  /* This external convenience routine validates all entries into temporary
+   * fixed storage so a failure cannot partially overwrite destination. */
   if (!destination || !orders || !kr || !damping_hz || count == 0 ||
       count > ESP_PR_MAX_RESONATORS || !isfinite(fundamental_hz) ||
       fundamental_hz <= 0.0f) {
@@ -33,6 +37,9 @@ esp_err_t esp_pr_make_harmonics(esp_pr_resonator_config_t *destination,
 }
 
 esp_err_t esp_pr_prepare(esp_pr_model_t *model, const esp_pr_config_t *config) {
+  /* Validate top-level relationships before computing coefficients. The local
+   * result provides failure atomicity for the caller-owned destination
+   * model. */
   if (!model || !config || !isfinite(config->sample_rate_hz) ||
       config->sample_rate_hz <= 0.0f || !isfinite(config->kp) ||
       !isfinite(config->output_min) || !isfinite(config->output_max) ||
@@ -45,6 +52,8 @@ esp_err_t esp_pr_prepare(esp_pr_model_t *model, const esp_pr_config_t *config) {
   }
   esp_pr_model_t result = {0};
   double gain_sum = 0.0;
+  /* The gain sum defines fixed anti-windup distribution weights. A zero-gain
+   * branch remains present but contributes and receives no correction. */
   for (size_t i = 0; i < config->resonator_count; ++i) {
     const esp_pr_resonator_config_t *b = &config->resonators[i];
     if (!branch_valid(b) || b->frequency_hz >= config->sample_rate_hz * 0.5)
@@ -87,6 +96,8 @@ esp_err_t esp_pr_prepare(esp_pr_model_t *model, const esp_pr_config_t *config) {
   result.kp = config->kp;
   result.output_min = config->output_min;
   result.output_max = config->output_max;
+  /* Compute the exact per-sample relaxation fraction once. -expm1(-x) retains
+   * accuracy when Ts/Tt is small; update then needs only multiplication. */
   result.correction_alpha =
       config->anti_windup_tracking_time_s > 0.0f
           ? (float)-expm1(-1.0 / ((double)config->sample_rate_hz *
@@ -98,6 +109,9 @@ esp_err_t esp_pr_prepare(esp_pr_model_t *model, const esp_pr_config_t *config) {
 }
 
 esp_err_t esp_pr_init(esp_pr_t *controller, const esp_pr_model_t *model) {
+  /* External initialization binds the borrowed model and zeroes all state in
+   * one assignment. No configuration arrays are referenced after
+   * preparation. */
   if (!controller || !model || !model->prepared)
     return ESP_ERR_INVALID_ARG;
   *controller = (esp_pr_t){.model = model};
@@ -105,6 +119,8 @@ esp_err_t esp_pr_init(esp_pr_t *controller, const esp_pr_model_t *model) {
 }
 
 esp_err_t ESP_PR_IRAM esp_pr_reset(esp_pr_t *controller) {
+  /* External lifecycle operation. The fixed bound makes execution finite, but
+   * callers must serialize it with updates and diagnostic reads. */
   if (!controller || !controller->model || !controller->model->prepared)
     return ESP_ERR_INVALID_STATE;
   controller->previous_error = 0.0f;
@@ -124,6 +140,7 @@ esp_err_t ESP_PR_IRAM esp_pr_reset(esp_pr_t *controller) {
 
 esp_err_t ESP_PR_IRAM esp_pr_update(esp_pr_t *controller, float reference,
                                     float measurement, float *output) {
+  /* Validate the instance and external inputs before computing next state. */
   if (!controller || !controller->model || !controller->model->prepared)
     return ESP_ERR_INVALID_STATE;
   if (!output || !isfinite(reference) || !isfinite(measurement))
@@ -137,6 +154,8 @@ esp_err_t ESP_PR_IRAM esp_pr_update(esp_pr_t *controller, float reference,
   float requested = proportional;
   esp_pr_resonator_state_t next[ESP_PR_MAX_RESONATORS];
   float contributions[ESP_PR_MAX_RESONATORS];
+  /* Linear trapezoidal state update. Results remain temporary until every
+   * branch and the subsequent correction have passed finite-value checks. */
   for (size_t i = 0; i < model->resonator_count; ++i) {
     const esp_pr_coefficients_t *c = &model->branches[i];
     const esp_pr_resonator_state_t *x = &controller->branches[i];
@@ -182,6 +201,8 @@ esp_err_t ESP_PR_IRAM esp_pr_update(esp_pr_t *controller, float reference,
 
 esp_err_t esp_pr_get_diagnostics(const esp_pr_t *controller,
                                  esp_pr_diagnostics_t *diagnostics) {
+  /* External snapshot copy. Synchronization is intentionally owned by the
+   * application because the component creates no tasks or locks. */
   if (!controller || !controller->model || !controller->model->prepared)
     return ESP_ERR_INVALID_STATE;
   if (!diagnostics)

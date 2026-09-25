@@ -6,6 +6,59 @@ controllers can share an immutable prepared model; their dynamic states remain
 separate. There is no task, lock, heap allocation, derivative or measurement
 filter inside the component.
 
+## Installation
+
+The component supports ESP-IDF 6.0 or newer. In a consuming application's
+`main/idf_component.yml`, declare the direct dependency with the public HTTPS
+URL and a tested release tag:
+
+```yaml
+dependencies:
+  esp_pr:
+    git: https://github.com/smartsensingme/esp_pr.git
+    version: v0.1.0
+```
+
+The manifest above belongs to the consuming application. This repository's
+root `idf_component.yml` belongs to `esp_pr` itself and declares its ESP-IDF
+compatibility. The component has no third-party component dependencies.
+
+For a manual or offline installation, copy or clone this repository into the
+application's `components/esp_pr` directory. If an existing Component Manager
+manifest selects a generated `managed_components/esp_pr`, either remove that
+dependency for the local build or configure an explicit local override. Setting
+`IDF_COMPONENT_MANAGER=0` disables Component Manager processing for a build,
+but then every required component must be available locally.
+
+Add `esp_pr` to the consuming component's build requirements:
+
+```cmake
+idf_component_register(SRCS "control.c" REQUIRES esp_pr)
+```
+
+## Architecture and lifecycle
+
+The component separates immutable tuning from mutable stream state:
+
+```text
+branch descriptions ──> prepare model ──> initialize controller(s)
+                                                   │
+                                                   ├──> update once per sample
+                                                   ├──> copy diagnostics
+                                                   └──> reset state
+```
+
+`esp_pr_prepare()` copies every required tuning value into discrete
+coefficients, so the input configuration and resonator array may leave scope.
+The resulting model must remain immutable and outlive every controller that
+references it. Each phase or signal stream needs a separate `esp_pr_t`; sharing
+one instance would mix its previous error, resonator states, and diagnostics.
+
+Reconfiguration is an application-level transition: stop updates, prepare the
+model, and reinitialize all controllers that refer to it. Reset clears dynamic
+state and diagnostics while retaining the model. Neither operation provides a
+bumpless transfer between tunings.
+
 ## Controller definition
 
 For each branch, the continuous design is:
@@ -105,6 +158,18 @@ For an already computed error, use `reference=error, measurement=0`.
 The component takes units chosen by the application; this application's output
 unit is the conditioned bipolar voltage, not the DAC code.
 
+A complete sample-loop call with an explicit fallback is:
+
+```c
+float command;
+esp_err_t err = esp_pr_update(&phase_r, reference, measurement, &command);
+if (err != ESP_OK) {
+    (void)esp_pr_reset(&phase_r);
+    command = 0.0f; // Application-selected safe command.
+}
+apply_command(command);
+```
+
 Preparation copies the input configuration into coefficients; the input arrays
 may leave scope. The prepared model must outlive its controllers and must not
 be modified while in use. Reconfiguration requires stopping updates, preparing
@@ -115,7 +180,8 @@ A single owner must serialize each controller's updates and reset. Diagnostic
 reads from a different task/core require caller synchronization. Diagnostics
 report the branch contributions **before** anti-windup correction; `branches`
 contains the corrected states. `esp_pr_get_diagnostics` is a task-context copy.
-Zero-initialize objects before first use and call prepare/init before update.
+Call prepare/init before update; successful initialization sets the complete
+destination object, so prior zero-initialization is optional.
 
 Invalid/nonfinite arguments or intermediate overflow return an error without
 changing controller state or the output destination. The caller must handle the
@@ -129,28 +195,27 @@ Runtime and memory are bounded by the configured branch count (the temporary
 arrays and persistent storage reserve the maximum 16 branches). No ISR timing
 or hardware deadline has been measured by the host tests.
 
-## This project's integration
+## API behavior and error handling
 
-`main/app_control.c` preserves the recovered original tuning:
+| Function | Called from | Work and state transition | Errors |
+|---|---|---|---|
+| `esp_pr_make_harmonics` | Application initialization | Builds 1–16 branch descriptions atomically | `ESP_ERR_INVALID_ARG` for invalid pointers/counts or generated branch values |
+| `esp_pr_prepare` | Application initialization | Validates, discretizes, checks poles, and commits an immutable model | `ESP_ERR_INVALID_ARG`; model unchanged |
+| `esp_pr_init` | Application initialization | Binds a prepared model and zeroes one controller | `ESP_ERR_INVALID_ARG`; controller unchanged |
+| `esp_pr_update` | Periodic owner task | Advances one sample, saturates output, applies post-sample tracking, commits diagnostics | Invalid state/input/arithmetic; controller and output unchanged |
+| `esp_pr_reset` | Application recovery/lifecycle | Clears all states and diagnostics | `ESP_ERR_INVALID_STATE` for invalid controller |
+| `esp_pr_get_diagnostics` | Application task context | Copies the latest committed diagnostics | Invalid state or null destination |
 
-| Frequency | Kr | damping_hz |
-|---|---:|---:|
-| 60 Hz | 60000 | 5 |
-| 180 Hz | 6000 | 5 |
-| 300 Hz | 10000 | 5 |
-| 420 Hz | 13000 | 5 |
+The component has no Kconfig symbols and no external component dependencies.
+Consumers list `esp_pr` in `REQUIRES` or `PRIV_REQUIRES`. Configuration is
+provided entirely through `esp_pr_config_t`; application Kconfig values may be
+converted into those fields before preparation.
 
-Kp is 5 and sample rate is 14400 Hz. With anti-windup disabled, the generated
-linear controller matches the original Octave biquad table within floating-point
-precision. During saturation, enabling anti-windup intentionally changes the
-subsequent state trajectory.
-
-`idf.py menuconfig` → **Application PR controller** → anti-windup tracking time.
-`CONFIG_APP_PR_TRACKING_TIME_US=10000` is the provisional 10 ms default.
-Set it to zero for comparison with the previous output-clamped controller.
-Physical-plant tuning and timing validation remain necessary; no plant transfer
-function was supplied. The DAC mapping remains -6 V → 0, 0 V → 2048,
-+6 V → 4095. The 0 V midpoint is rounded to the nearest code.
+The component does not check whether `output` aliases controller/model memory;
+that documented precondition belongs to the caller. It does check null pointers,
+nonfinite inputs, overflowed intermediate values, and model state. Do not use
+`-ffast-math`, because its finite-value assumptions undermine this recovery
+contract.
 
 ## Host validation
 
@@ -161,12 +226,10 @@ ctest --test-dir /tmp/esp_pr_host --output-on-failure
 ```
 
 The tests check the historical coefficient table, analytical frequency response,
-invalid inputs and overflow without partial state changes, independent phase
+invalid inputs and overflow without partial state changes, independent stream
 history, reset, harmonic construction, P-only operation, inactive branches,
-unsaturated equivalence, saturation recovery and extreme tracking times. A second
-host test compiles the real application adapter and DAC conversion against
-minimal platform declarations and checks all 4096 DAC codes, bipolar endpoints
-and per-phase fault recovery. It does not simulate peripheral or RTOS behavior.
+unsaturated equivalence, saturation recovery and extreme tracking times. They
+do not simulate peripheral, plant, actuator, or RTOS behavior.
 
 The reference-table test uses double arithmetic; the component uses float. On
 the development host the mixed-harmonic relative RMS difference was about
@@ -174,3 +237,41 @@ the development host the mixed-harmonic relative RMS difference was about
 visible: the constant-input test differs by about 0.8% of the **proportional DC
 response**, while the tested nonzero-frequency responses differ by less than
 0.001%. These are bounded numerical tests, not measurements of the real plant.
+
+## ESP-IDF example
+
+`examples/basic` is a standalone ESP-IDF application that uses the repository
+root as a local component, prepares four harmonic branches, initializes one
+controller, and performs one update:
+
+```sh
+idf.py -C examples/basic set-target esp32s3
+idf.py -C examples/basic build
+```
+
+The generated `sdkconfig`, `dependencies.lock`, and build directory are ignored.
+Applications should choose gains, limits, tracking time, update rate, and fault
+handling from their actual plant and actuator requirements.
+
+## Troubleshooting
+
+- `esp_pr_prepare()` rejects a branch near Nyquist: reduce its center frequency
+  or increase the sample rate; every frequency must be strictly below Fs/2.
+- A very narrow or extreme branch is rejected despite valid-looking continuous
+  parameters: the float-rounded discrete poles failed the strict Jury checks.
+  Adjust frequency/damping or validate a higher-precision design separately.
+- Output remains clipped after the overload disappears: inspect
+  `unsaturated_output`, `saturation_error`, and branch states; verify the
+  downstream actuator uses the same limits and tune the tracking time on the
+  physical plant.
+- A zero-gain branch does nothing: this is intentional; it receives zero input
+  gain and zero anti-windup correction share.
+- Diagnostics appear inconsistent across cores: copy them under caller-provided
+  synchronization or publish a snapshot from the controller's owner task.
+- A numerical update fails: retain or select a safe actuator command, reset or
+  reinitialize that controller according to the application's recovery policy,
+  and investigate nonfinite measurements or state growth.
+
+## License
+
+This component is available under the MIT License. See `LICENSE`.

@@ -10,14 +10,4 @@ config APP_PR_TRACKING_TIME_US
         Smaller values produce stronger state correction during saturation.
         Zero reproduces the linear controller with output limiting only.
 
-config APP_FIR_BENCHMARK
-    bool "Compare the specific FIR with esp_fir at boot"
-    default y
-    help
-        Before starting the control task, process identical deterministic
-        samples through three instances of the original hand-unrolled 15-tap
-        filter and the generic symmetric esp_fir kernel. Report the best cycle
-        count over nine rounds and the maximum output difference. Disable this
-        after collecting target-hardware results to remove the comparison code.
-
 endmenu
