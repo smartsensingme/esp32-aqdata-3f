@@ -169,6 +169,15 @@ When the profile is explicitly requested:
    the block works. Add local comments where a non-obvious invariant,
    conversion, synchronization rule, saturation rule, or protocol decision
    matters. Avoid comments that merely restate C syntax.
+   Use vertical whitespace to make those blocks visible: leave one blank line
+   between logically distinct phases such as declarations, setup, execution,
+   verification, cleanup, and reporting. In tests, also separate independent
+   scenarios and the arrange/act/assert portions when they would otherwise run
+   together visually. Keep tightly coupled statements together, keep a comment
+   adjacent to the block it describes, use one blank line between top-level
+   declarations or function definitions, and avoid multiple consecutive blank
+   lines. Apply the repository formatter afterward, but do not rely on it to
+   infer semantic block boundaries.
 5. Make the component README sufficient for a new user to integrate it. Cover
    purpose and boundaries, architecture, lifecycle/state machine, configuration
    and Kconfig fields, complete usage examples, API behavior, data formats,
