@@ -1,8 +1,0 @@
-version: "0.1.0"
-description: Allocation-free proportional multi-resonant controller for ESP-IDF
-url: https://github.com/smartsensingme/esp_pr
-repository: https://github.com/smartsensingme/esp_pr.git
-license: MIT
-dependencies:
-  idf:
-    version: ">=6.0"
