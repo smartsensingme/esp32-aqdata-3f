@@ -1,0 +1,79 @@
+# ESP-IDF and CMake build output
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+managed_components/
+dependencies.lock
+sdkconfig
+sdkconfig.old
+sdkconfig.*.old
+
+# Generated binaries, objects, maps, and archives
+*.a
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.obj
+
+# Test and coverage output
+Testing/
+coverage/
+*.gcda
+*.gcno
+*.gcov
+*.lcov
+
+# Logs, temporary files, and local secrets
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+.env
+.env.*
+!.env.example
+secrets.*
+
+# Visual Studio Code, Visual Studio, JetBrains, and common editors
+.vscode/
+.idea/
+.vs/
+*.code-workspace
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux desktop and trash metadata
+.directory
+.Trash-*/
+
+# Python helper caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/

@@ -1,0 +1,8 @@
+version: "0.1.0"
+description: Allocation-free real FIR filters optimized for deterministic ESP-IDF loops
+url: https://github.com/smartsensingme/esp_fir
+repository: https://github.com/smartsensingme/esp_fir.git
+license: MIT
+dependencies:
+  idf:
+    version: ">=6.0"
