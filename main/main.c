@@ -6,6 +6,7 @@
 #include "esp_adc/adc_continuous.h"
 #include "esp_clk_tree.h"
 #include "esp_log.h"
+#include "esp_intr_alloc.h"
 #include "esp_mcp4922.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -28,7 +29,6 @@ static const char *TAG = "main";
 static mcp4922_context_t dac_ctx;
 
 static TaskHandle_t control_task_handle = NULL;
-static TaskHandle_t rms_task_handle = NULL;
 
 // ADC Handles
 static adc_continuous_handle_t adc_handle = NULL;
@@ -48,6 +48,10 @@ static float adc_cali_lut[4096];
 
 // Se a malha de controle estiver fechada, faça TEST_IS_ON = 0
 #define TEST_IS_ON 1
+
+#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0 && !TEST_IS_ON
+#error "Finite capture must only be used with the open-loop DAC demo"
+#endif
 
 #if TEST_IS_ON != 0 && TEST_IS_ON != 1
 #error "TEST_IS_ON must be either 0 or 1"
@@ -241,20 +245,81 @@ static bool init_adc_calibration(adc_unit_t unit, adc_atten_t atten,
   return calibrated;
 }
 
+/* Run from the pinned peripheral owner, before enabling acquisition. GDMA
+ * allocates its interrupt during adc_continuous_new_handle(), not start(). */
+static void init_adc_continuous(void) {
+  // Configure ADC1 Continuous Mode (DMA)
+  // Define a configuração inicial de 43.200 Hz e o tamanho de um
+  // "Frame" (quadro) é de 3 conversões. Com isso, o hardware do ADC fica
+  // rodando sozinho em background. Ele lê R, depois S, depois T. Quando ele
+  // junta essas 3 leituras, ele fecha 1 Frame.
+  adc_continuous_handle_cfg_t adc_config = {
+      // Multiplo exato do frame de 12 bytes: 240/12=20 frames de folga.
+      .max_store_buf_size = 240,
+      .conv_frame_size = 3 * SOC_ADC_DIGI_RESULT_BYTES, // 1 frame = 3 channels
+  };
+  ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &adc_handle));
+
+  adc_continuous_config_t dig_cfg = {
+      // Initial value required by the high-level driver. The exact 43.2 kHz
+      // setting is applied from the ADC registers after the controller starts.
+      .sample_freq_hz = ADC_TARGET_CONVERSION_FREQ_HZ,
+      .conv_mode = ADC_CONV_SINGLE_UNIT_1,
+  };
+
+  adc_digi_pattern_config_t adc_pattern[3] = {0};
+  // Define a configuração de cada canal do ADC
+  adc_pattern[0].atten = ADC_ATTENUATION; // Faixa de tensão de entrada
+  adc_pattern[0].channel = ADC_CHAN_R;    // Canal conectado ao ADC
+  adc_pattern[0].unit = ADC_UNIT_1;       // ADC1 (pode ser 0 ou 1)
+  adc_pattern[0].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH; // Resolução: 12 bits
+
+  adc_pattern[1].atten = ADC_ATTENUATION;
+  adc_pattern[1].channel = ADC_CHAN_S;
+  adc_pattern[1].unit = ADC_UNIT_1;
+  adc_pattern[1].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
+
+  adc_pattern[2].atten = ADC_ATTENUATION;
+  adc_pattern[2].channel = ADC_CHAN_T;
+  adc_pattern[2].unit = ADC_UNIT_1;
+  adc_pattern[2].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
+
+  dig_cfg.pattern_num = 3;
+  dig_cfg.adc_pattern = adc_pattern;
+  ESP_ERROR_CHECK(adc_continuous_config(adc_handle, &dig_cfg));
+
+  // Register DMA Callback
+  adc_continuous_evt_cbs_t cbs = {
+      // Função chamada quando um frame completo do A/D estiver no buffer
+      .on_conv_done = adc_on_conv_done,
+      // Função chamada quando o buffer do A/D estiver cheio
+      .on_pool_ovf = adc_on_pool_overflow,
+  };
+  ESP_ERROR_CHECK(
+      adc_continuous_register_event_callbacks(adc_handle, &cbs, NULL));
+
+  ESP_LOGI(TAG, "ADC driver initialized on Core %d", xPortGetCoreID());
+#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
+  /* Finite-mode inventory verifies allocation before timing begins. */
+  ESP_ERROR_CHECK(esp_intr_dump(stdout));
+#endif
+}
+
 static void IRAM_ATTR control_loop_task(void *arg) {
   ESP_LOGI(TAG, "Entering DMA Control Loop on Core %d", xPortGetCoreID());
+  init_adc_continuous();
 
   // Acquire bus permanently for ultra-fast writing
   // O ESP32-S3 possui dois barramentos SPI. Para o laço de controle não ter que
   // pedir acesso ao barramento a cada interrupção, nós adquirimos um barramento
   // aqui e não o liberamos mais. Qualquer task extra vai ter que usar o
   // barramento SPI.
-  spi_device_acquire_bus(dac_ctx.spi_handle, portMAX_DELAY);
+  ESP_ERROR_CHECK(spi_device_acquire_bus(dac_ctx.spi_handle, portMAX_DELAY));
   uint16_t val[NUM_CHIPS * 2] = {0};
 
   // Send a dummy transaction using the high-level API to properly configure the
   // SPI hardware
-  mcp4922_write_channels(&dac_ctx, val);
+  ESP_ERROR_CHECK(mcp4922_write_channels(&dac_ctx, val));
 
   // Phase Skew Compensation variables (First-Order Hold)
   static float prev_err_r = 0.0f;
@@ -275,7 +340,7 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   ESP_ERROR_CHECK(adc_continuous_start(adc_handle));
   adc_apply_target_frame_rate();
 
-  while (1) {
+  while (!app_diagnostics_capture_done()) {
     /*
      * Consume somente um evento. Se mais frames chegaram enquanto a task
      * estava ocupada, o contador permanece positivo e a proxima iteracao
@@ -328,6 +393,8 @@ static void IRAM_ATTR control_loop_task(void *arg) {
       app_diagnostics_cycle_end(false);
       continue;
     }
+
+    app_diagnostics_stage_end(APP_DIAG_ADC);
 
     int raw_r = 0, raw_s = 0, raw_t = 0;
 
@@ -396,6 +463,8 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     val[2] = app_control_voltage_to_dac(control_action_t);
     val[3] = 0;
 
+    app_diagnostics_stage_end(APP_DIAG_COMPUTE);
+
     // 7. Write either the controller outputs or the three-phase test signal.
 #if TEST_IS_ON
     uint32_t test_s_index = test_sine_index + TEST_PHASE_S_OFFSET;
@@ -412,26 +481,46 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     test_val[1] = test_sine_lut[test_s_index];
     test_val[2] = test_sine_lut[test_t_index];
     test_val[3] = 0;
-    mcp4922_ll_write_channels(&dac_ctx, test_val);
+    esp_err_t dac_result = mcp4922_ll_write_channels(&dac_ctx, test_val);
 
     test_sine_index++;
     if (test_sine_index >= TEST_SINE_POINTS) {
       test_sine_index = 0;
     }
 #else
-    mcp4922_ll_write_channels(&dac_ctx, val);
+    esp_err_t dac_result = mcp4922_ll_write_channels(&dac_ctx, val);
 #endif
 
-    // Telemetry always records the controller outputs, even in test mode.
-    if (app_control_store_telemetry(val[0], val[1], val[2])) {
-      xTaskNotifyGive(rms_task_handle);
+    if (dac_result != ESP_OK) {
+      ESP_ERROR_CHECK(adc_continuous_stop(adc_handle));
+      app_diagnostics_cycle_end(false);
+      /* A failed transaction may still be active. Retain the context and bus
+       * reservation, stop acquisition and require an explicit system reset. */
+      ESP_LOGE(TAG, "DAC fault: %s; acquisition stopped, reset required",
+               esp_err_to_name(dac_result));
+      vTaskSuspend(NULL);
     }
+    app_diagnostics_stage_end(APP_DIAG_DAC);
+
+#if !CONFIG_APP_DIAG_DISABLE_RMS
+    // Telemetry always records the controller outputs, even in test mode.
+    /* Publish READY atomically; the Core 0 worker polls without a kernel
+     * notification from this timing-sensitive path. */
+    (void)app_control_store_telemetry(val[0], val[1], val[2]);
+#endif
 
     app_diagnostics_cycle_end(true);
   }
+
+  /* Finite capture ends the continuous operating phase. No writes remain
+   * outstanding after the synchronous LL DAC call. Preserve the last code. */
+  ESP_ERROR_CHECK(adc_continuous_stop(adc_handle));
+  spi_device_release_bus(dac_ctx.spi_handle);
+  app_diagnostics_capture_finish();
+  vTaskDelete(NULL);
 }
 
-/* Runs once from the component's Core 0 reporter, after the ADC has started. */
+/* Continuous mode only: runs once from the Core 0 reporter with ADC active. */
 static void report_adc_rate(void) {
   float rate = 0.0f;
   if (adc_get_configured_conversion_freq(&rate)) {
@@ -442,23 +531,31 @@ static void report_adc_rate(void) {
   }
 }
 
+#if !CONFIG_APP_DIAG_DISABLE_RMS
 static void rms_calc_task(void *arg) {
   while (1) {
     vTaskDelay(pdMS_TO_TICKS(4000));
 
-    capture_idx = 0;
-    capture_requested = true;
-
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if (!app_control_request_capture()) {
+      ESP_LOGE(TAG, "RMS capture request rejected: previous capture still owned");
+      continue;
+    }
 
     float rms_r = 0.0f, rms_s = 0.0f, rms_t = 0.0f;
-    app_control_calc_rms(&rms_r, &rms_s, &rms_t);
+    /* A failed read only checks READY, leaving the output/buffer untouched.
+     * Sleep one tick (10 ms at 100 Hz), preserving CPU time for Core 0 Idle.
+     * Polling adds up to one nominal tick, plus scheduling latency. */
+    while (!app_control_calc_rms(&rms_r, &rms_s, &rms_t)) {
+      vTaskDelay(1);
+    }
 
 #if RUN_WITH_WIFI
     app_mqtt_publish_rms(rms_r, rms_s, rms_t);
 #endif
   }
 }
+
+#endif
 
 void app_main(void) {
   ESP_LOGI(TAG, "Starting Digital Control Loop Architecture (ESP32-S3)");
@@ -494,56 +591,6 @@ void app_main(void) {
     return;
   }
 
-  // Configure ADC1 Continuous Mode (DMA)
-  // Define a configuração inicial de 43.200 Hz e o tamanho de um
-  // "Frame" (quadro) é de 3 conversões. Com isso, o hardware do ADC fica
-  // rodando sozinho em background. Ele lê R, depois S, depois T. Quando ele
-  // junta essas 3 leituras, ele fecha 1 Frame.
-  adc_continuous_handle_cfg_t adc_config = {
-      // Multiplo exato do frame de 12 bytes: 240/12=20 frames de folga.
-      .max_store_buf_size = 240,
-      .conv_frame_size = 3 * SOC_ADC_DIGI_RESULT_BYTES, // 1 frame = 3 channels
-  };
-  ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &adc_handle));
-
-  adc_continuous_config_t dig_cfg = {
-      // Initial value required by the high-level driver. The exact 43.2 kHz
-      // setting is applied from the ADC registers after the controller starts.
-      .sample_freq_hz = ADC_TARGET_CONVERSION_FREQ_HZ,
-      .conv_mode = ADC_CONV_SINGLE_UNIT_1,
-  };
-
-  adc_digi_pattern_config_t adc_pattern[3] = {0};
-  // Define a configuração de cada canal do ADC
-  adc_pattern[0].atten = ADC_ATTENUATION; // Faixa de tensão de entrada
-  adc_pattern[0].channel = ADC_CHAN_R;    // Canal conectado ao ADC
-  adc_pattern[0].unit = ADC_UNIT_1;       // ADC1 (pode ser 0 ou 1)
-  adc_pattern[0].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH; // Resolução: 12 bits
-
-  adc_pattern[1].atten = ADC_ATTENUATION;
-  adc_pattern[1].channel = ADC_CHAN_S;
-  adc_pattern[1].unit = ADC_UNIT_1;
-  adc_pattern[1].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
-
-  adc_pattern[2].atten = ADC_ATTENUATION;
-  adc_pattern[2].channel = ADC_CHAN_T;
-  adc_pattern[2].unit = ADC_UNIT_1;
-  adc_pattern[2].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
-
-  dig_cfg.pattern_num = 3;
-  dig_cfg.adc_pattern = adc_pattern;
-  ESP_ERROR_CHECK(adc_continuous_config(adc_handle, &dig_cfg));
-
-  // Register DMA Callback
-  adc_continuous_evt_cbs_t cbs = {
-      // Função chamada quando um frame completo do A/D estiver no buffer
-      .on_conv_done = adc_on_conv_done,
-      // Função chamada quando o buffer do A/D estiver cheio
-      .on_pool_ovf = adc_on_pool_overflow,
-  };
-  ESP_ERROR_CHECK(
-      adc_continuous_register_event_callbacks(adc_handle, &cbs, NULL));
-
   // Lê os dados de calibração na flash, se houver. Caso contrário, devolve
   // false e usa a calibração padrão. (A calibração padrão é usada apenas em
   // versões antigas do ESP32. Para o ESP32-S3 o dados de calibração sempre
@@ -564,8 +611,10 @@ void app_main(void) {
   }
 
   // Create Tasks
+#if !CONFIG_APP_DIAG_DISABLE_RMS
   xTaskCreatePinnedToCore(rms_calc_task, "rms_calc", 8192, NULL, 5,
-                          &rms_task_handle, 0); // Core 0
+                          NULL, 0); // Core 0
+#endif
   app_diagnostics_init(report_adc_rate);        // Reporter proprio no Core 0
   xTaskCreatePinnedToCore(control_loop_task, "control_loop", 8192, NULL,
                           configMAX_PRIORITIES - 1, &control_task_handle,

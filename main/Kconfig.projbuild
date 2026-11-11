@@ -10,4 +10,33 @@ config APP_PR_TRACKING_TIME_US
         Smaller values produce stronger state correction during saturation.
         Zero reproduces the linear controller with output limiting only.
 
+config APP_DIAG_CAPTURE_SECONDS
+    int "Finite diagnostic capture duration (seconds; 0 is continuous)"
+    depends on ESP_RT_DIAGNOSTICS_ENABLE
+    range 0 120
+    default 0
+    help
+        Collect one window in RAM without periodic snapshots or diagnostic
+        logging. Stop ADC acquisition after this duration, leave the DAC at
+        its last value, then print on Core 0. Restart to repeat. Startup logs
+        remain enabled; RMS logging is controlled separately. Extra storage
+        is static and bounded.
+
+config APP_DIAG_DISABLE_RMS
+    bool "Disable RMS task and telemetry capture for jitter comparison"
+    default n
+    help
+        Omit the RMS worker and per-frame telemetry copies, preserving ADC,
+        FIR/PR processing and DAC generation. Use for comparison against an
+        otherwise identical finite capture with this option disabled.
+
+config APP_RMS_LOG_ENABLE
+    bool "Print RMS values to the console"
+    default y
+    help
+        Print the three RMS results after each capture. Disable to isolate
+        console formatting and output from telemetry capture, worker polling
+        and RMS calculation, which remain unchanged. No additional persistent
+        buffers are allocated by this option.
+
 endmenu

@@ -1,0 +1,33 @@
+Start testing: Nov 08 22:12 -03
+----------------------------------------------------------
+1/1 Testing: esp_pr
+1/1 Test: esp_pr
+Command: "/tmp/aqdata-pr-o2-tests/test_esp_pr"
+Directory: /tmp/aqdata-pr-o2-tests
+"esp_pr" start time: Nov 08 22:12 -03
+Output:
+----------------------------------------------------------
+PASS validation, atomic errors, reset, independent states, harmonic helper, P-only
+Legacy coefficient-table relative RMS error: 7.6083536e-07
+Response    0 Hz: relative RMS error 0.0077595371
+Response   30 Hz: relative RMS error 1.6272488e-06
+Response   60 Hz: relative RMS error 1.5347134e-06
+Response   63 Hz: relative RMS error 7.2955253e-07
+Response  120 Hz: relative RMS error 5.1880912e-07
+Response  180 Hz: relative RMS error 7.3977078e-07
+Response  300 Hz: relative RMS error 6.3999996e-06
+Response  420 Hz: relative RMS error 8.1099983e-06
+Response 1000 Hz: relative RMS error 7.6068544e-07
+PASS identical unsaturated response, zero-gain branch and diagnostics
+Saturation: peak state 6103.781 -> 2941.362; first 100ms release energy 51705.605 -> 48455.690
+PASS anti-windup shared correction, saturation/release and tracking-time extremes
+All esp_pr host tests passed.
+<end of output>
+Test time =   0.92 sec
+----------------------------------------------------------
+Test Passed.
+"esp_pr" end time: Nov 08 22:12 -03
+"esp_pr" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 08 22:12 -03

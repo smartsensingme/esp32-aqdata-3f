@@ -1,0 +1,119 @@
+I (120) esp_image: segment 3: paddr=0003abd4 vaddr=3fc95608 sizeen 0004C020 (304 KiB): RAM
+I (219) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (224) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (230) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (236) spi_flash: detected chip: boya
+I (238) spi_flash: flash io: dio
+W (241) spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (254) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (260) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (267) main_task: Started on CPU0
+I (277) main_task: Calling app_main()
+I (277) main: Starting Digital Control Loop Architecture (ESP32-S3)
+W (277) main: DAC test mode enabled: outputting three-phase 60 Hz sine waves
+I (287) main: Calibration scheme: Curve Fitting
+I (287) main: Pre-computing ADC Calibration LUT...
+I (317) main_task: Returned from app_main()
+I (317) main: Entering DMA Control Loop on Core 1
+I (4367) app_control: Corrente RMS Fase R: 80.000 A
+I (4367) app_control: Corrente RMS Fase S: 80.000 A
+I (4367) app_control: Corrente RMS Fase T: 80.000 A
+I (8417) app_control: Corrente RMS Fase R: 80.000 A
+I (8417) app_control: Corrente RMS Fase S: 80.000 A
+I (8417) app_control: Corrente RMS Fase T: 80.000 A
+I (12467) app_control: Corrente RMS Fase R: 80.000 A
+I (12467) app_control: Corrente RMS Fase S: 80.000 A
+I (12467) app_control: Corrente RMS Fase T: 80.000 A
+I (16517) app_control: Corrente RMS Fase R: 80.000 A
+I (16517) app_control: Corrente RMS Fase S: 80.000 A
+I (16517) app_control: Corrente RMS Fase T: 80.000 A
+I (20567) app_control: Corrente RMS Fase R: 80.000 A
+I (20567) app_control: Corrente RMS Fase S: 80.000 A
+I (20567) app_control: Corrente RMS Fase T: 80.000 A
+I (24617) app_control: Corrente RMS Fase R: 80.000 A
+I (24617) app_control: Corrente RMS Fase S: 80.000 A
+I (24617) app_control: Corrente RMS Fase T: 80.000 A
+I (28667) app_control: Corrente RMS Fase R: 80.000 A
+I (28667) app_control: Corrente RMS Fase S: 80.000 A
+I (28667) app_control: Corrente RMS Fase T: 80.000 A
+I (32717) app_control: Corrente RMS Fase R: 80.000 A
+I (32717) app_control: Corrente RMS Fase S: 80.000 A
+I (32717) app_control: Corrente RMS Fase T: 80.000 A
+I (36767) app_control: Corrente RMS Fase R: 80.000 A
+I (36767) app_control: Corrente RMS Fase S: 80.000 A
+I (36767) app_control: Corrente RMS Fase T: 80.000 A
+I (40817) app_control: Corrente RMS Fase R: 80.000 A
+I (40817) app_control: Corrente RMS Fase S: 80.000 A
+I (40817) app_control: Corrente RMS Fase T: 80.000 A
+I (44867) app_control: Corrente RMS Fase R: 80.000 A
+I (44867) app_control: Corrente RMS Fase S: 80.000 A
+I (44867) app_control: Corrente RMS Fase T: 80.000 A
+I (48917) app_control: Corrente RMS Fase R: 80.000 A
+I (48917) app_control: Corrente RMS Fase S: 80.000 A
+I (48917) app_control: Corrente RMS Fase T: 80.000 A
+I (52967) app_control: Corrente RMS Fase R: 80.000 A
+I (52967) app_control: Corrente RMS Fase S: 80.000 A
+I (52967) app_control: Corrente RMS Fase T: 80.000 A
+I (57017) app_control: Corrente RMS Fase R: 80.000 A
+I (57017) app_control: Corrente RMS Fase S: 80.000 A
+I (57017) app_control: Corrente RMS Fase T: 80.000 A
+I (61067) app_control: Corrente RMS Fase R: 80.000 A
+I (61067) app_control: Corrente RMS Fase S: 80.000 A
+I (61067) app_control: Corrente RMS Fase T: 80.000 A
+I (65117) app_control: Corrente RMS Fase R: 80.000 A
+I (65117) app_control: Corrente RMS Fase S: 80.000 A
+I (65117) app_control: Corrente RMS Fase T: 80.000 A
+I (69167) app_control: Corrente RMS Fase R: 80.000 A
+I (69167) app_control: Corrente RMS Fase S: 80.000 A
+I (69167) app_control: Corrente RMS Fase T: 80.000 A
+I (73217) app_control: Corrente RMS Fase R: 80.000 A
+I (73217) app_control: Corrente RMS Fase S: 80.000 A
+I (73217) app_control: Corrente RMS Fase T: 80.000 A
+I (77267) app_control: Corrente RMS Fase R: 80.000 A
+I (77267) app_control: Corrente RMS Fase S: 80.000 A
+I (77267) app_control: Corrente RMS Fase T: 80.000 A
+I (81317) app_control: Corrente RMS Fase R: 80.000 A
+I (81317) app_control: Corrente RMS Fase S: 80.000 A
+I (81317) app_control: Corrente RMS Fase T: 80.000 A
+I (85367) app_control: Corrente RMS Fase R: 80.000 A
+I (85367) app_control: Corrente RMS Fase S: 80.000 A
+I (85367) app_control: Corrente RMS Fase T: 80.000 A
+I (89417) app_control: Corrente RMS Fase R: 80.000 A
+I (89417) app_control: Corrente RMS Fase S: 80.000 A
+I (89417) app_control: Corrente RMS Fase T: 80.000 A
+I (93467) app_control: Corrente RMS Fase R: 80.000 A
+I (93467) app_control: Corrente RMS Fase S: 80.000 A
+I (93467) app_control: Corrente RMS Fase T: 80.000 A
+I (97517) app_control: Corrente RMS Fase R: 80.000 A
+I (97517) app_control: Corrente RMS Fase S: 80.000 A
+I (97517) app_control: Corrente RMS Fase T: 80.000 A
+I (101567) app_control: Corrente RMS Fase R: 80.000 A
+I (101567) app_control: Corrente RMS Fase S: 80.000 A
+I (101567) app_control: Corrente RMS Fase T: 80.000 A
+I (105617) app_control: Corrente RMS Fase R: 80.000 A
+I (105617) app_control: Corrente RMS Fase S: 80.000 A
+I (105617) app_control: Corrente RMS Fase T: 80.000 A
+I (109667) app_control: Corrente RMS Fase R: 80.000 A
+I (109667) app_control: Corrente RMS Fase S: 80.000 A
+I (109667) app_control: Corrente RMS Fase T: 80.000 A
+I (113717) app_control: Corrente RMS Fase R: 80.000 A
+I (113717) app_control: Corrente RMS Fase S: 80.000 A
+I (113717) app_control: Corrente RMS Fase T: 80.000 A
+I (117767) app_control: Corrente RMS Fase R: 80.000 A
+I (117767) app_control: Corrente RMS Fase S: 80.000 A
+I (117767) app_control: Corrente RMS Fase T: 80.000 A
+I (120317) control_diag: CAPTURE stopped duration_s=120 RMS=on; DAC holds last value
+I (120317) control_diag: window=1 [log-affected] duration=120000037us attempts=1727995 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=1/1727995 (0.0001%) exec_max=74us (boot=74us) deadline=70us wake=per-frame
+I (120337) control_diag: window=1 delta(total): generated=1727996(1727996) processed=1727995(1727995) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (120347) control_diag: window=1 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=1/1727995 (1 total) exec_max=11947 cycles(boot=11947) budget=11111 cycles report_errors=0
+I (120367) control_diag: timing us: wake_max=30 valid=1727995 missing=0 stamp_drops=0 ISR=62..76 outside=0 DAC_done=34..77 outside=11 band=62..77
+I (120377) control_diag: stage maxima cycles: ADC=8025 compute=2396 DAC=1386 publish=0 (previous publications) anomalies_dropped=3
+I (120387) control_diag: anomaly seq=2 t32_us=82528 pending=1 wake_us=30 ISR_us=68 DAC_us=34 stage_cycles=946/2248/1281
+I (120397) control_diag: anomaly seq=3 t32_us=82574 pending=1 wake_us=9 ISR_us=67 DAC_us=46 stage_cycles=932/2248/1282
+I (120407) control_diag: anomaly seq=116638 t32_us=8182231 pending=1 wake_us=14 ISR_us=63 DAC_us=61 stage_cycles=933/2248/1287
+I (120417) control_diag: anomaly seq=174962 t32_us=12232509 pending=1 wake_us=14 ISR_us=63 DAC_us=61 stage_cycles=933/2248/1281
+I (120437) control_diag: anomaly seq=233282 t32_us=16282509 pending=1 wake_us=14 ISR_us=63 DAC_us=61 stage_cycles=933/2248/1281
+I (120447) control_diag: anomaly seq=291602 t32_us=20332509 pending=1 wake_us=14 ISR_us=63 DAC_us=61 stage_cycles=933/2248/1281
+I (120457) control_diag: anomaly seq=349922 t32_us=24382509 pending=1 wake_us=14 ISR_us=63 DAC_us=61 stage_cycles=933/2248/1281
+I (120467) control_diag: anomaly seq=408242 t32_us=28432509 pending=1 wake_us=14 ISR_us=63 DAC_us=61 stage_cycles=933/2248/1281
+I (120477) control_diag: CAPTURE COMPLETE

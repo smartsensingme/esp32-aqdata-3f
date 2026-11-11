@@ -1,0 +1,97 @@
+I (119) esp_image: segment 3: paddr=00038fc8 vaddr=3fc97118 size_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (225) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (230) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (236) spi_flash: detected chip: boya
+I (239) spi_flash: flash io: dio
+W (242) spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (255) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (261) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (268) main_task: Started on CPU0
+I (278) main_task: Calling app_main()
+I (278) main: Starting Digital Control Loop Architecture (ESP32-S3)
+W (278) main: DAC test mode enabled: outputting three-phase 60 Hz sine waves
+I (288) main: Calibration scheme: Curve Fitting
+I (288) main: Pre-computing ADC Calibration LUT...
+I (318) main: Entering DMA Control Loop on Core 1
+I (318) main_task: Returned from app_main()
+I (318) main: ADC driver initialized on Core 1
+CPU 0 interrupt status:
+ Int  Level  Type   Status
+  0     1    Level  Reserved
+  1     1    Level  Used: RTC_CORE
+  2     1    Level  Used: FROM_CPU_INTR0
+  3     1    Level  Used: SYSTIMER_TARGET0
+  4     1    Level  Reserved
+  5     1    Level  Used: TG0_WDT_LEVEL
+  6     1    Level  CPU-internal
+  7     1    Level  CPU-internal
+  8     1    Level  Used: SPI2
+  9     1    Level  Free
+ 10     1    Edge   Free (not general-use)
+ 11     3    Level  CPU-internal
+ 12     1    Level  Free
+ 13     1    Level  Free
+ 14     7    Level  Free (not general-use)
+ 15     3    Level  CPU-internal
+ 16     5    Level  CPU-internal
+ 17     1    Level  Free
+ 18     1    Level  Free
+ 19     2    Level  Free
+ 20     2    Level  Free
+ 21     2    Level  Free
+ 22     3    Edge   Free (not general-use)
+ 23     3    Level  Free
+ 24     4    Level  Reserved
+ 25     4    Level  Reserved
+ 26     5    Level  Free (not general-use)
+ 27     3    Level  Free
+ 28     4    Edge   Reserved
+ 29     3    Level  CPU-internal
+ 30     4    Edge   Free (not general-use)
+ 31     5    Level  Free (not general-use)
+CPU 1 interrupt status:
+ Int  Level  Type   Status
+  0     1    Level  Used: FROM_CPU_INTR1
+  1     1    Level  Used: SYSTIMER_TARGET1
+  2     1    Level  Used: DMA_IN_CH0
+  3     1    Level  Free
+  4     1    Level  Free
+  5     1    Level  Free
+  6     1    Level  CPU-internal
+  7     1    Level  CPU-internal
+  8     1    Level  Free
+  9     1    Level  Free
+ 10     1    Edge   Free (not general-use)
+ 11     3    Level  CPU-internal
+ 12     1    Level  Free
+ 13     1    Level  Free
+ 14     7    Level  Free (not general-use)
+ 15     3    Level  CPU-internal
+ 16     5    Level  CPU-internal
+ 17     1    Level  Free
+ 18     1    Level  Free
+ 19     2    Level  Free
+ 20     2    Level  Free
+ 21     2    Level  Free
+ 22     3    Edge   Free (not general-use)
+ 23     3    Level  Free
+ 24     4    Level  Reserved
+ 25     4    Level  Reserved
+ 26     5    Level  Free (not general-use)
+ 27     3    Level  Free
+ 28     4    Edge   Reserved
+ 29     3    Level  CPU-internal
+ 30     4    Edge   Free (not general-use)
+ 31     5    Level  Free (not general-use)
+Interrupts available for general use: 24
+Shared interrupts: 0
+I (120518) control_diag: CAPTURE stopped duration_s=120 RMS=on; DAC holds last value
+I (120518) control_diag: RMS console logging=off
+I (120518) control_diag: window=1 [log-affected] duration=120000000us attempts=1727995 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=1/1727995 (0.0001%) exec_max=82us (boot=82us) deadline=70us wake=per-frame
+I (120538) control_diag: window=1 delta(total): generated=1727995(1727995) processed=1727995(1727995) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (120548) control_diag: window=1 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=1/1727995 (1 total) exec_max=13256 cycles(boot=13256) budget=11111 cycles report_errors=0
+I (120568) control_diag: timing us: wake_max=33 valid=1727995 missing=0 stamp_drops=0 ISR=65..73 outside=0 DAC_done=33..76 outside=2 band=62..77
+I (120578) control_diag: stage maxima cycles: ADC=7941 compute=3788 DAC=1342 publish=0 (previous publications) anomalies_dropped=0
+I (120598) control_diag: anomaly seq=2 t32_us=282297 pending=1 wake_us=33 ISR_us=65 DAC_us=33 stage_cycles=933/2247/1282
+I (120608) control_diag: anomaly seq=3 t32_us=282350 pending=1 wake_us=12 ISR_us=73 DAC_us=53 stage_cycles=935/2247/1281
+I (120618) control_diag: CAPTURE COMPLETE

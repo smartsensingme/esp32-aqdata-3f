@@ -27,10 +27,6 @@ extern esp_pr_t pr_fase_r;
 extern esp_pr_t pr_fase_s;
 extern esp_pr_t pr_fase_t;
 
-// Telemetry state exposed for task notification trigger
-extern volatile bool capture_requested;
-extern volatile int capture_idx;
-
 /**
  * @brief Inicializa os controladores PR das tres fases.
  *
@@ -70,9 +66,15 @@ float app_control_process_phase(esp_pr_t *controller, float error);
  */
 uint16_t app_control_voltage_to_dac(float control_voltage);
 
-// Encapsulates telemetry storage (returns true when buffer is full)
+/* RMS-worker only: request a capture; false if one is pending or unread.
+ * Control task exclusively owns the sample index and buffer writes. */
+bool app_control_request_capture(void);
+
+// Control-task only; returns true exactly once when a buffer becomes ready.
 bool app_control_store_telemetry(uint16_t val_r, uint16_t val_s,
                                  uint16_t val_t);
 
-// RMS mathematical loop for the Core 0 task
-void app_control_calc_rms(float *rms_r, float *rms_s, float *rms_t);
+/* Single RMS consumer only. Returns false without changing outputs if no
+ * complete capture exists; otherwise computes RMS and releases the buffer.
+ * Output pointers may be NULL. No new capture is accepted during the read. */
+bool app_control_calc_rms(float *rms_r, float *rms_s, float *rms_t);

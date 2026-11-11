@@ -1,0 +1,415 @@
+I (119) esp_image: segment 3: paddr=00039180 vaddr=3fc97c18 sizeConfigure to isolate all GPIO pins in sleep state
+I (261) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (268) main_task: Started on CPU0
+I (278) main_task: Calling app_main()
+I (278) main: Starting Digital Control Loop Architecture (ESP32-S3)
+W (278) main: DAC test mode enabled: outputting three-phase 60 Hz sine waves
+I (288) main: Calibration scheme: Curve Fitting
+I (288) main: Pre-computing ADC Calibration LUT...
+I (318) main: Entering DMA Control Loop on Core 1
+I (318) main_task: Returned from app_main()
+I (318) main: ADC driver initialized on Core 1
+I (4368) app_control: Corrente RMS Fase R: 79.909 A
+I (4368) app_control: Corrente RMS Fase S: 79.558 A
+I (4368) app_control: Corrente RMS Fase T: 80.000 A
+I (8418) app_control: Corrente RMS Fase R: 79.954 A
+I (8418) app_control: Corrente RMS Fase S: 79.462 A
+I (8418) app_control: Corrente RMS Fase T: 80.000 A
+I (10318) main: ADC registers: src=80000000 Hz, CLKM=22 + 4/27 + 1, interval=40
+I (10318) main: ADC configurado: 43200.000 Hz por conversao, 14400.000 Hz por frame
+I (10318) control_diag: window=1 [log-affected] duration=5000056us attempts=71996 rate=14399.0/14400.0Hz processed=14399.0Hz deadline_overruns=0/71996 (0.0000%) exec_max=49us (boot=49us) deadline=70us wake=per-frame
+I (10338) control_diag: window=1 delta(total): generated=71996(71996) processed=71996(71996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (10358) control_diag: window=1 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/71996 (0 total) exec_max=7820 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (10368) control_diag: timing us: wake_max=11 valid=71996 missing=0 stamp_drops=0 ISR=66..72 outside=0 DAC_done=47..79 outside=401 band=62..77
+I (10388) control_diag: stage maxima cycles: ADC=3332 compute=2366 DAC=2106 publish=0 (previous publications) anomalies_dropped=393
+I (10398) control_diag: anomaly seq=2 t32_us=83686 pending=1 wake_us=7 ISR_us=66 DAC_us=47 stage_cycles=949/2248/2086
+I (10408) control_diag: anomaly seq=265 t32_us=101960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10418) control_diag: anomaly seq=409 t32_us=111960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10428) control_diag: anomaly seq=553 t32_us=121960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10438) control_diag: anomaly seq=697 t32_us=131960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10448) control_diag: anomaly seq=985 t32_us=151960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10458) control_diag: anomaly seq=1129 t32_us=161960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10468) control_diag: anomaly seq=1273 t32_us=171960 pending=1 wake_us=10 ISR_us=70 DAC_us=78 stage_cycles=2048/2248/1894
+I (10478) control_diag: window=2 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=2/72000 (0.0028%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (10498) control_diag: window=2 delta(total): generated=72000(143996) processed=72000(143996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (10518) control_diag: window=2 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6892 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (10528) control_diag: timing us: wake_max=56 valid=72000 missing=0 stamp_drops=0 ISR=67..72 outside=0 DAC_done=40..126 outside=403 band=62..77
+I (10548) control_diag: stage maxima cycles: ADC=2054 compute=3876 DAC=3355 publish=11702 (previous publications) anomalies_dropped=395
+I (10558) control_diag: anomaly seq=71997 t32_us=5083396 pending=1 wake_us=56 ISR_us=70 DAC_us=126 stage_cycles=962/3876/1729
+I (10568) control_diag: anomaly seq=71998 t32_us=5083443 pending=1 wake_us=34 ISR_us=69 DAC_us=47 stage_cycles=950/2248/3355
+I (10578) control_diag: anomaly seq=71999 t32_us=5083483 pending=1 wake_us=11 ISR_us=70 DAC_us=40 stage_cycles=950/2248/2086
+I (10588) control_diag: anomaly seq=72265 t32_us=5101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (10598) control_diag: anomaly seq=72409 t32_us=5111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (10608) control_diag: anomaly seq=72553 t32_us=5121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (10618) control_diag: anomaly seq=72697 t32_us=5131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (10628) control_diag: anomaly seq=72985 t32_us=5151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (12468) app_control: Corrente RMS Fase R: 79.952 A
+I (12468) app_control: Corrente RMS Fase S: 79.462 A
+I (12468) app_control: Corrente RMS Fase T: 80.000 A
+I (16518) app_control: Corrente RMS Fase R: 80.000 A
+I (16518) app_control: Corrente RMS Fase S: 79.472 A
+I (16518) app_control: Corrente RMS Fase T: 80.000 A
+I (20318) control_diag: window=3 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (20328) control_diag: window=3 delta(total): generated=72000(215996) processed=72000(215996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (20338) control_diag: window=3 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (20358) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=65..73 outside=0 DAC_done=62..79 outside=375 band=62..77
+I (20368) control_diag: stage maxima cycles: ADC=2123 compute=2360 DAC=2104 publish=3064 (previous publications) anomalies_dropped=367
+I (20378) control_diag: anomaly seq=148729 t32_us=10411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20398) control_diag: anomaly seq=148873 t32_us=10421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20408) control_diag: anomaly seq=149017 t32_us=10431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20418) control_diag: anomaly seq=149305 t32_us=10451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20428) control_diag: anomaly seq=149449 t32_us=10461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20438) control_diag: anomaly seq=149593 t32_us=10471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20448) control_diag: anomaly seq=149737 t32_us=10481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20458) control_diag: anomaly seq=150025 t32_us=10501961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20468) control_diag: window=4 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (20488) control_diag: window=4 delta(total): generated=72000(287996) processed=72000(287996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (20508) control_diag: window=4 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (20518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=64..77 outside=0 DAC_done=63..79 outside=401 band=62..77
+I (20538) control_diag: stage maxima cycles: ADC=2054 compute=2317 DAC=2106 publish=6253 (previous publications) anomalies_dropped=393
+I (20548) control_diag: anomaly seq=215997 t32_us=15083349 pending=1 wake_us=10 ISR_us=77 DAC_us=79 stage_cycles=938/2305/1893
+I (20558) control_diag: anomaly seq=216265 t32_us=15101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20568) app_control: Corrente RMS Fase R: 80.000 A
+I (20568) app_control: Corrente RMS Fase S: 79.485 A
+I (20578) app_control: Corrente RMS Fase T: 80.000 A
+I (20578) control_diag: anomaly seq=216409 t32_us=15111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20588) control_diag: anomaly seq=216553 t32_us=15121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20608) control_diag: anomaly seq=216697 t32_us=15131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20618) control_diag: anomaly seq=216985 t32_us=15151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20628) control_diag: anomaly seq=217129 t32_us=15161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (20638) control_diag: anomaly seq=217273 t32_us=15171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (24628) app_control: Corrente RMS Fase R: 80.000 A
+I (24628) app_control: Corrente RMS Fase S: 79.567 A
+I (24628) app_control: Corrente RMS Fase T: 80.000 A
+I (28678) app_control: Corrente RMS Fase R: 80.000 A
+I (28678) app_control: Corrente RMS Fase S: 79.592 A
+I (28678) app_control: Corrente RMS Fase T: 80.000 A
+I (30318) control_diag: window=5 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (30328) control_diag: window=5 delta(total): generated=72000(359996) processed=72000(359996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (30338) control_diag: window=5 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6780 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (30358) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=65..74 outside=0 DAC_done=62..80 outside=376 band=62..77
+I (30368) control_diag: stage maxima cycles: ADC=2118 compute=2359 DAC=2105 publish=3064 (previous publications) anomalies_dropped=368
+I (30378) control_diag: anomaly seq=288553 t32_us=20121962 pending=1 wake_us=11 ISR_us=69 DAC_us=80 stage_cycles=2115/2252/2105
+I (30398) control_diag: anomaly seq=292873 t32_us=20421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30408) control_diag: anomaly seq=293017 t32_us=20431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30418) control_diag: anomaly seq=293305 t32_us=20451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30428) control_diag: anomaly seq=293449 t32_us=20461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30438) control_diag: anomaly seq=293593 t32_us=20471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30448) control_diag: anomaly seq=293737 t32_us=20481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30458) control_diag: anomaly seq=294025 t32_us=20501961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30468) control_diag: window=6 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (30488) control_diag: window=6 delta(total): generated=72000(431996) processed=72000(431996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (30508) control_diag: window=6 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (30518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..79 outside=400 band=62..77
+I (30538) control_diag: stage maxima cycles: ADC=2054 compute=2319 DAC=2104 publish=3064 (previous publications) anomalies_dropped=392
+I (30548) control_diag: anomaly seq=360265 t32_us=25101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30558) control_diag: anomaly seq=360409 t32_us=25111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30568) control_diag: anomaly seq=360553 t32_us=25121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30578) control_diag: anomaly seq=360697 t32_us=25131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30588) control_diag: anomaly seq=360985 t32_us=25151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30598) control_diag: anomaly seq=361129 t32_us=25161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30608) control_diag: anomaly seq=361273 t32_us=25171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (30628) control_diag: anomaly seq=361417 t32_us=25181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (32728) app_control: Corrente RMS Fase R: 80.000 A
+I (32728) app_control: Corrente RMS Fase S: 79.577 A
+I (32728) app_control: Corrente RMS Fase T: 80.000 A
+I (36778) app_control: Corrente RMS Fase R: 79.984 A
+I (36778) app_control: Corrente RMS Fase S: 79.610 A
+I (36778) app_control: Corrente RMS Fase T: 80.000 A
+I (40318) control_diag: window=7 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (40328) control_diag: window=7 delta(total): generated=72000(503996) processed=72000(503996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (40338) control_diag: window=7 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (40358) control_diag: timing us: wake_max=17 valid=72000 missing=0 stamp_drops=0 ISR=67..73 outside=0 DAC_done=62..79 outside=376 band=62..77
+I (40368) control_diag: stage maxima cycles: ADC=2118 compute=2347 DAC=2105 publish=3064 (previous publications) anomalies_dropped=368
+I (40378) control_diag: anomaly seq=436585 t32_us=30401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40398) control_diag: anomaly seq=436729 t32_us=30411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40408) control_diag: anomaly seq=436873 t32_us=30421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40418) control_diag: anomaly seq=437017 t32_us=30431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40428) control_diag: anomaly seq=437305 t32_us=30451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40438) control_diag: anomaly seq=437449 t32_us=30461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40448) control_diag: anomaly seq=437593 t32_us=30471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40458) control_diag: anomaly seq=437737 t32_us=30481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40468) control_diag: window=8 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (40488) control_diag: window=8 delta(total): generated=72000(575996) processed=72000(575996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (40508) control_diag: window=8 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (40518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..79 outside=400 band=62..77
+I (40538) control_diag: stage maxima cycles: ADC=2054 compute=2319 DAC=2104 publish=3064 (previous publications) anomalies_dropped=392
+I (40548) control_diag: anomaly seq=504265 t32_us=35101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40558) control_diag: anomaly seq=504409 t32_us=35111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40568) control_diag: anomaly seq=504553 t32_us=35121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40578) control_diag: anomaly seq=504697 t32_us=35131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40588) control_diag: anomaly seq=504985 t32_us=35151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40598) control_diag: anomaly seq=505129 t32_us=35161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40608) control_diag: anomaly seq=505273 t32_us=35171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40628) control_diag: anomaly seq=505417 t32_us=35181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (40828) app_control: Corrente RMS Fase R: 79.885 A
+I (40828) app_control: Corrente RMS Fase S: 79.575 A
+I (40828) app_control: Corrente RMS Fase T: 80.000 A
+I (44878) app_control: Corrente RMS Fase R: 79.979 A
+I (44878) app_control: Corrente RMS Fase S: 79.572 A
+I (44878) app_control: Corrente RMS Fase T: 80.000 A
+I (48928) app_control: Corrente RMS Fase R: 79.897 A
+I (48928) app_control: Corrente RMS Fase S: 79.506 A
+I (48928) app_control: Corrente RMS Fase T: 80.000 A
+I (50318) control_diag: window=9 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (50328) control_diag: window=9 delta(total): generated=72000(647996) processed=72000(647996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (50338) control_diag: window=9 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (50358) control_diag: timing us: wake_max=16 valid=72000 missing=0 stamp_drops=0 ISR=67..73 outside=0 DAC_done=62..79 outside=377 band=62..77
+I (50368) control_diag: stage maxima cycles: ADC=2118 compute=2357 DAC=2107 publish=3064 (previous publications) anomalies_dropped=369
+I (50378) control_diag: anomaly seq=580585 t32_us=40401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50398) control_diag: anomaly seq=580729 t32_us=40411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50408) control_diag: anomaly seq=580873 t32_us=40421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50418) control_diag: anomaly seq=581017 t32_us=40431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50428) control_diag: anomaly seq=581305 t32_us=40451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50438) control_diag: anomaly seq=581449 t32_us=40461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50448) control_diag: anomaly seq=581593 t32_us=40471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50458) control_diag: anomaly seq=581737 t32_us=40481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50468) control_diag: window=10 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (50488) control_diag: window=10 delta(total): generated=72000(719996) processed=72000(719996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (50508) control_diag: window=10 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (50518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..80 outside=401 band=62..77
+I (50538) control_diag: stage maxima cycles: ADC=2054 compute=2325 DAC=2105 publish=3064 (previous publications) anomalies_dropped=393
+I (50548) control_diag: anomaly seq=648265 t32_us=45101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50558) control_diag: anomaly seq=648409 t32_us=45111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50568) control_diag: anomaly seq=648553 t32_us=45121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50578) control_diag: anomaly seq=648697 t32_us=45131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50588) control_diag: anomaly seq=648985 t32_us=45151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50598) control_diag: anomaly seq=649129 t32_us=45161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50608) control_diag: anomaly seq=649273 t32_us=45171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (50628) control_diag: anomaly seq=649417 t32_us=45181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (52978) app_control: Corrente RMS Fase R: 79.952 A
+I (52978) app_control: Corrente RMS Fase S: 79.533 A
+I (52978) app_control: Corrente RMS Fase T: 80.000 A
+I (57028) app_control: Corrente RMS Fase R: 79.999 A
+I (57028) app_control: Corrente RMS Fase S: 79.474 A
+I (57028) app_control: Corrente RMS Fase T: 80.000 A
+I (60318) control_diag: window=11 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (60328) control_diag: window=11 delta(total): generated=72000(791996) processed=72000(791996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (60338) control_diag: window=11 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (60358) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=67..73 outside=0 DAC_done=62..79 outside=376 band=62..77
+I (60368) control_diag: stage maxima cycles: ADC=2122 compute=2359 DAC=2110 publish=3064 (previous publications) anomalies_dropped=368
+I (60378) control_diag: anomaly seq=724585 t32_us=50401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60398) control_diag: anomaly seq=724729 t32_us=50411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60408) control_diag: anomaly seq=724873 t32_us=50421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60418) control_diag: anomaly seq=725017 t32_us=50431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60428) control_diag: anomaly seq=725305 t32_us=50451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60438) control_diag: anomaly seq=725449 t32_us=50461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60448) control_diag: anomaly seq=725593 t32_us=50471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60458) control_diag: anomaly seq=725737 t32_us=50481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60468) control_diag: window=12 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (60488) control_diag: window=12 delta(total): generated=72000(863996) processed=72000(863996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (60508) control_diag: window=12 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (60518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..79 outside=401 band=62..77
+I (60538) control_diag: stage maxima cycles: ADC=2054 compute=2316 DAC=2105 publish=3064 (previous publications) anomalies_dropped=393
+I (60548) control_diag: anomaly seq=792265 t32_us=55101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60558) control_diag: anomaly seq=792409 t32_us=55111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60568) control_diag: anomaly seq=792553 t32_us=55121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60578) control_diag: anomaly seq=792697 t32_us=55131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60588) control_diag: anomaly seq=792985 t32_us=55151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60598) control_diag: anomaly seq=793129 t32_us=55161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60608) control_diag: anomaly seq=793273 t32_us=55171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (60628) control_diag: anomaly seq=793417 t32_us=55181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (61078) app_control: Corrente RMS Fase R: 79.869 A
+I (61078) app_control: Corrente RMS Fase S: 79.473 A
+I (61078) app_control: Corrente RMS Fase T: 80.000 A
+I (65128) app_control: Corrente RMS Fase R: 79.837 A
+I (65128) app_control: Corrente RMS Fase S: 79.468 A
+I (65128) app_control: Corrente RMS Fase T: 80.000 A
+I (69178) app_control: Corrente RMS Fase R: 80.000 A
+I (69178) app_control: Corrente RMS Fase S: 79.459 A
+I (69178) app_control: Corrente RMS Fase T: 80.000 A
+I (70318) control_diag: window=13 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (70328) control_diag: window=13 delta(total): generated=72000(935996) processed=72000(935996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (70338) control_diag: window=13 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (70358) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..79 outside=378 band=62..77
+I (70368) control_diag: stage maxima cycles: ADC=2136 compute=2364 DAC=2112 publish=3064 (previous publications) anomalies_dropped=370
+I (70378) control_diag: anomaly seq=864553 t32_us=60121960 pending=1 wake_us=11 ISR_us=69 DAC_us=78 stage_cycles=2114/2267/1869
+I (70398) control_diag: anomaly seq=867577 t32_us=60331960 pending=1 wake_us=11 ISR_us=69 DAC_us=78 stage_cycles=2104/2310/1757
+I (70408) control_diag: anomaly seq=868585 t32_us=60401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70418) control_diag: anomaly seq=868729 t32_us=60411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70428) control_diag: anomaly seq=868873 t32_us=60421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70438) control_diag: anomaly seq=869017 t32_us=60431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70448) control_diag: anomaly seq=869305 t32_us=60451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70458) control_diag: anomaly seq=869449 t32_us=60461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70468) control_diag: window=14 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (70488) control_diag: window=14 delta(total): generated=72000(1007996) processed=72000(1007996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (70508) control_diag: window=14 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (70518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..79 outside=401 band=62..77
+I (70538) control_diag: stage maxima cycles: ADC=2054 compute=2314 DAC=2105 publish=3064 (previous publications) anomalies_dropped=393
+I (70548) control_diag: anomaly seq=936265 t32_us=65101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70558) control_diag: anomaly seq=936409 t32_us=65111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70568) control_diag: anomaly seq=936553 t32_us=65121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70578) control_diag: anomaly seq=936697 t32_us=65131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70588) control_diag: anomaly seq=936985 t32_us=65151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70598) control_diag: anomaly seq=937129 t32_us=65161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70618) control_diag: anomaly seq=937273 t32_us=65171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (70628) control_diag: anomaly seq=937417 t32_us=65181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (73228) app_control: Corrente RMS Fase R: 80.000 A
+I (73228) app_control: Corrente RMS Fase S: 79.466 A
+I (73228) app_control: Corrente RMS Fase T: 80.000 A
+I (77278) app_control: Corrente RMS Fase R: 79.987 A
+I (77278) app_control: Corrente RMS Fase S: 79.415 A
+I (77278) app_control: Corrente RMS Fase T: 80.000 A
+I (80318) control_diag: window=15 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (80328) control_diag: window=15 delta(total): generated=72000(1079996) processed=72000(1079996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (80338) control_diag: window=15 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (80358) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..79 outside=378 band=62..77
+I (80368) control_diag: stage maxima cycles: ADC=2147 compute=2348 DAC=2122 publish=3064 (previous publications) anomalies_dropped=370
+I (80378) control_diag: anomaly seq=1008553 t32_us=70121960 pending=1 wake_us=11 ISR_us=69 DAC_us=78 stage_cycles=2114/2267/1869
+I (80398) control_diag: anomaly seq=1012585 t32_us=70401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80408) control_diag: anomaly seq=1012729 t32_us=70411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80418) control_diag: anomaly seq=1012873 t32_us=70421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80428) control_diag: anomaly seq=1013017 t32_us=70431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80438) control_diag: anomaly seq=1013305 t32_us=70451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80448) control_diag: anomaly seq=1013449 t32_us=70461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80458) control_diag: anomaly seq=1013593 t32_us=70471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80478) control_diag: window=16 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (80488) control_diag: window=16 delta(total): generated=72000(1151996) processed=72000(1151996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (80508) control_diag: window=16 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (80518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=61..80 outside=402 band=62..77
+I (80538) control_diag: stage maxima cycles: ADC=2054 compute=2312 DAC=2104 publish=3064 (previous publications) anomalies_dropped=394
+I (80548) control_diag: anomaly seq=1080265 t32_us=75101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80558) control_diag: anomaly seq=1080409 t32_us=75111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80568) control_diag: anomaly seq=1080553 t32_us=75121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80578) control_diag: anomaly seq=1080697 t32_us=75131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80588) control_diag: anomaly seq=1080985 t32_us=75151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80598) control_diag: anomaly seq=1081129 t32_us=75161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80618) control_diag: anomaly seq=1081273 t32_us=75171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (80628) control_diag: anomaly seq=1081417 t32_us=75181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (81328) app_control: Corrente RMS Fase R: 80.000 A
+I (81328) app_control: Corrente RMS Fase S: 79.492 A
+I (81328) app_control: Corrente RMS Fase T: 80.000 A
+I (85378) app_control: Corrente RMS Fase R: 80.000 A
+I (85378) app_control: Corrente RMS Fase S: 79.465 A
+I (85378) app_control: Corrente RMS Fase T: 80.000 A
+I (89428) app_control: Corrente RMS Fase R: 79.892 A
+I (89428) app_control: Corrente RMS Fase S: 79.523 A
+I (89428) app_control: Corrente RMS Fase T: 80.000 A
+I (90318) control_diag: window=17 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (90328) control_diag: window=17 delta(total): generated=72000(1223996) processed=72000(1223996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (90338) control_diag: window=17 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (90358) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..79 outside=377 band=62..77
+I (90368) control_diag: stage maxima cycles: ADC=2136 compute=2382 DAC=2125 publish=3064 (previous publications) anomalies_dropped=369
+I (90378) control_diag: anomaly seq=1156585 t32_us=80401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90398) control_diag: anomaly seq=1156729 t32_us=80411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90408) control_diag: anomaly seq=1156873 t32_us=80421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90418) control_diag: anomaly seq=1157017 t32_us=80431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90428) control_diag: anomaly seq=1157305 t32_us=80451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90438) control_diag: anomaly seq=1157449 t32_us=80461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90448) control_diag: anomaly seq=1157593 t32_us=80471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90458) control_diag: anomaly seq=1157737 t32_us=80481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90478) control_diag: window=18 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (90488) control_diag: window=18 delta(total): generated=72000(1295996) processed=72000(1295996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (90508) control_diag: window=18 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6701 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (90518) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=62..79 outside=402 band=62..77
+I (90538) control_diag: stage maxima cycles: ADC=2054 compute=2324 DAC=2105 publish=3064 (previous publications) anomalies_dropped=394
+I (90548) control_diag: anomaly seq=1224265 t32_us=85101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90558) control_diag: anomaly seq=1224409 t32_us=85111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90568) control_diag: anomaly seq=1224553 t32_us=85121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90578) control_diag: anomaly seq=1224697 t32_us=85131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90588) control_diag: anomaly seq=1224841 t32_us=85141961 pending=1 wake_us=10 ISR_us=69 DAC_us=78 stage_cycles=2036/2248/2105
+I (90598) control_diag: anomaly seq=1224985 t32_us=85151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90618) control_diag: anomaly seq=1225129 t32_us=85161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (90628) control_diag: anomaly seq=1225273 t32_us=85171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (93478) app_control: Corrente RMS Fase R: 80.000 A
+I (93478) app_control: Corrente RMS Fase S: 79.530 A
+I (93478) app_control: Corrente RMS Fase T: 80.000 A
+I (97528) app_control: Corrente RMS Fase R: 80.000 A
+I (97528) app_control: Corrente RMS Fase S: 79.584 A
+I (97528) app_control: Corrente RMS Fase T: 80.000 A
+I (100318) control_diag: window=19 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (100328) control_diag: window=19 delta(total): generated=72000(1367996) processed=72000(1367996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (100338) control_diag: window=19 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (100358) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=67..73 outside=0 DAC_done=63..79 outside=376 band=62..77
+I (100368) control_diag: stage maxima cycles: ADC=2136 compute=2372 DAC=2107 publish=3064 (previous publications) anomalies_dropped=368
+I (100388) control_diag: anomaly seq=1300585 t32_us=90401961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100398) control_diag: anomaly seq=1300729 t32_us=90411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100408) control_diag: anomaly seq=1300873 t32_us=90421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100418) control_diag: anomaly seq=1301017 t32_us=90431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100428) control_diag: anomaly seq=1301305 t32_us=90451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100438) control_diag: anomaly seq=1301449 t32_us=90461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100448) control_diag: anomaly seq=1301593 t32_us=90471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100458) control_diag: anomaly seq=1301737 t32_us=90481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100478) control_diag: window=20 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (100488) control_diag: window=20 delta(total): generated=72000(1439996) processed=72000(1439996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (100508) control_diag: window=20 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (100528) control_diag: timing us: wake_max=15 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..80 outside=401 band=62..77
+I (100538) control_diag: stage maxima cycles: ADC=2054 compute=2322 DAC=2105 publish=3064 (previous publications) anomalies_dropped=393
+I (100548) control_diag: anomaly seq=1368265 t32_us=95101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100558) control_diag: anomaly seq=1368409 t32_us=95111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100568) control_diag: anomaly seq=1368553 t32_us=95121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100578) control_diag: anomaly seq=1368697 t32_us=95131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100598) control_diag: anomaly seq=1368985 t32_us=95151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100608) control_diag: anomaly seq=1369129 t32_us=95161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100618) control_diag: anomaly seq=1369273 t32_us=95171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (100628) control_diag: anomaly seq=1369417 t32_us=95181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (101578) app_control: Corrente RMS Fase R: 80.000 A
+I (101578) app_control: Corrente RMS Fase S: 79.646 A
+I (101578) app_control: Corrente RMS Fase T: 80.000 A
+I (105628) app_control: Corrente RMS Fase R: 80.000 A
+I (105628) app_control: Corrente RMS Fase S: 79.627 A
+I (105628) app_control: Corrente RMS Fase T: 80.000 A
+I (109678) app_control: Corrente RMS Fase R: 79.947 A
+I (109678) app_control: Corrente RMS Fase S: 79.612 A
+I (109678) app_control: Corrente RMS Fase T: 80.000 A
+I (110318) control_diag: window=21 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (110328) control_diag: window=21 delta(total): generated=72000(1511996) processed=72000(1511996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (110338) control_diag: window=21 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6745 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (110358) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=67..73 outside=0 DAC_done=63..79 outside=376 band=62..77
+I (110368) control_diag: stage maxima cycles: ADC=2138 compute=2373 DAC=2125 publish=3064 (previous publications) anomalies_dropped=368
+I (110388) control_diag: anomaly seq=1443289 t32_us=100311961 pending=1 wake_us=11 ISR_us=69 DAC_us=79 stage_cycles=2078/2252/2104
+I (110398) control_diag: anomaly seq=1444729 t32_us=100411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110408) control_diag: anomaly seq=1444873 t32_us=100421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110418) control_diag: anomaly seq=1445017 t32_us=100431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110428) control_diag: anomaly seq=1445305 t32_us=100451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110438) control_diag: anomaly seq=1445449 t32_us=100461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110448) control_diag: anomaly seq=1445593 t32_us=100471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110468) control_diag: anomaly seq=1445737 t32_us=100481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110478) control_diag: window=22 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (110498) control_diag: window=22 delta(total): generated=72000(1583996) processed=72000(1583996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (110508) control_diag: window=22 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (110528) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..79 outside=400 band=62..77
+I (110538) control_diag: stage maxima cycles: ADC=2102 compute=2355 DAC=2104 publish=3064 (previous publications) anomalies_dropped=392
+I (110548) control_diag: anomaly seq=1512265 t32_us=105101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110558) control_diag: anomaly seq=1512409 t32_us=105111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110568) control_diag: anomaly seq=1512553 t32_us=105121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110588) control_diag: anomaly seq=1512697 t32_us=105131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110598) control_diag: anomaly seq=1512985 t32_us=105151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110608) control_diag: anomaly seq=1513129 t32_us=105161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110618) control_diag: anomaly seq=1513273 t32_us=105171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (110628) control_diag: anomaly seq=1513417 t32_us=105181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (113728) app_control: Corrente RMS Fase R: 79.911 A
+I (113728) app_control: Corrente RMS Fase S: 79.561 A
+I (113728) app_control: Corrente RMS Fase T: 80.000 A
+I (117778) app_control: Corrente RMS Fase R: 79.945 A
+I (117778) app_control: Corrente RMS Fase S: 79.875 A
+I (117778) app_control: Corrente RMS Fase T: 80.000 A
+I (120318) control_diag: window=23 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (120328) control_diag: window=23 delta(total): generated=72000(1655996) processed=72000(1655996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (120338) control_diag: window=23 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (120358) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=62..79 outside=375 band=62..77
+I (120368) control_diag: stage maxima cycles: ADC=2149 compute=2391 DAC=2105 publish=3064 (previous publications) anomalies_dropped=367
+I (120388) control_diag: anomaly seq=1588729 t32_us=110411961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120398) control_diag: anomaly seq=1588873 t32_us=110421961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120408) control_diag: anomaly seq=1589017 t32_us=110431961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120418) control_diag: anomaly seq=1589305 t32_us=110451961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120428) control_diag: anomaly seq=1589449 t32_us=110461961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120438) control_diag: anomaly seq=1589593 t32_us=110471961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120448) control_diag: anomaly seq=1589737 t32_us=110481961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120468) control_diag: anomaly seq=1590025 t32_us=110501961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120478) control_diag: window=24 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=42us (boot=49us) deadline=70us wake=per-frame
+I (120498) control_diag: window=24 delta(total): generated=72000(1727996) processed=72000(1727996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (120508) control_diag: window=24 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6681 cycles(boot=7820) budget=11111 cycles report_errors=0
+I (120528) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=64..79 outside=400 band=62..77
+I (120538) control_diag: stage maxima cycles: ADC=2095 compute=2357 DAC=2104 publish=3064 (previous publications) anomalies_dropped=392
+I (120548) control_diag: anomaly seq=1656265 t32_us=115101961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120558) control_diag: anomaly seq=1656409 t32_us=115111961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120568) control_diag: anomaly seq=1656553 t32_us=115121961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120588) control_diag: anomaly seq=1656697 t32_us=115131961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120598) control_diag: anomaly seq=1656985 t32_us=115151961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120608) control_diag: anomaly seq=1657129 t32_us=115161961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120618) control_diag: anomaly seq=1657273 t32_us=115171961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (120628) control_diag: anomaly seq=1657417 t32_us=115181961 pending=1 wake_us=10 ISR_us=70 DAC_us=79 stage_cycles=2054/2248/2068
+I (121828) app_control: Corrente RMS Fase R: 79.934 A
+I (121828) app_control: Corrente RMS Fase S: 79.846 A
+I (121828) app_control: Corrente RMS Fase T: 80.000 A

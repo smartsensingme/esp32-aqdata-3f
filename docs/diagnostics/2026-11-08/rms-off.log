@@ -1,0 +1,22 @@
+I (121) esp_image: segment 3: paddr=0003c320 vaddr=3fc96230 sizeder(2048k). Using the size in the binary image header.
+I (256) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (262) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (269) main_task: Started on CPU0
+I (279) main_task: Calling app_main()
+I (279) main: Starting Digital Control Loop Architecture (ESP32-S3)
+W (279) main: DAC test mode enabled: outputting three-phase 60 Hz sine waves
+I (289) main: Calibration scheme: Curve Fitting
+I (289) main: Pre-computing ADC Calibration LUT...
+I (319) main_task: Returned from app_main()
+I (319) main: Entering DMA Control Loop on Core 1
+I (120319) control_diag: CAPTURE stopped duration_s=120 RMS=off; DAC holds last value
+W (120319) main: ADC clock source selection 0 is unsupported
+W (120319) main: Could not estimate ADC sampling rate from registers
+I (120329) control_diag: window=1 [log-affected] duration=120000010us attempts=1727994 rate=14399.9/14400.0Hz processed=14399.9Hz deadline_overruns=2/1727994 (0.0001%) exec_max=80us (boot=80us) deadline=70us wake=per-frame
+I (120349) control_diag: window=1 delta(total): generated=1727994(1727994) processed=1727994(1727994) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (120359) control_diag: window=1 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=1/1727994 (1 total) exec_max=12992 cycles(boot=12992) budget=11111 cycles report_errors=0
+I (120379) control_diag: timing us: wake_max=43 valid=1727994 missing=0 stamp_drops=0 ISR=65..70 outside=0 DAC_done=39..76 outside=2 band=62..77
+I (120389) control_diag: stage maxima cycles: ADC=8468 compute=2861 DAC=2484 publish=0 (previous publications) anomalies_dropped=0
+I (120409) control_diag: anomaly seq=2 t32_us=84974 pending=1 wake_us=43 ISR_us=65 DAC_us=39 stage_cycles=1119/2751/1456
+I (120419) control_diag: anomaly seq=3 t32_us=85015 pending=1 wake_us=14 ISR_us=69 DAC_us=41 stage_cycles=1115/2741/1434
+I (120429) control_diag: CAPTURE COMPLETE

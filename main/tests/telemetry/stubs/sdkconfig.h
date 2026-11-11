@@ -1,0 +1,3 @@
+#pragma once
+#define CONFIG_APP_PR_TRACKING_TIME_US 10000
+#define CONFIG_APP_RMS_LOG_ENABLE 0

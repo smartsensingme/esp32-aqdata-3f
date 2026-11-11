@@ -1,0 +1,18 @@
+Start testing: Nov 11 09:40 -03
+----------------------------------------------------------
+1/1 Testing: dac_timeouts
+1/1 Test: dac_timeouts
+Command: "/tmp/aqdata-dac-asan/test_timeouts"
+Directory: /tmp/aqdata-dac-asan
+"dac_timeouts" start time: Nov 11 09:40 -03
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.28 sec
+----------------------------------------------------------
+Test Passed.
+"dac_timeouts" end time: Nov 11 09:40 -03
+"dac_timeouts" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 11 09:40 -03

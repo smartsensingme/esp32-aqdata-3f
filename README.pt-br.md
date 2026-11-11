@@ -2,20 +2,20 @@
 
 *Leia em outros idiomas: [English](README.md)*
 
-Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) de tempo real rígido (hard real-time)** para sistemas de rede trifásica (ex: inversores), acoplado a uma tabela de seno de 60 Hz com taxa fixa e telemetria Wi-Fi/MQTT totalmente isolada.
+Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) com requisitos temporais** para sistemas de rede trifásica (ex: inversores), acoplado a uma tabela de seno de 60 Hz com taxa fixa e telemetria Wi-Fi/MQTT opcional.
 
 ## Arquitetura Central
 
-Para garantir um determinismo absoluto (latência na casa dos microssegundos) sem disparar watchdogs do RTOS ou sofrer engasgos sob tráfego intenso de rede, o sistema utiliza processamento multicore assimétrico:
+A interrupção DMA do ADC e a tarefa proprietária do controle ficam no Core 1. O processamento RMS e a apresentação dos diagnósticos ficam no Core 0. A afinidade reduz competição, mas interrupções, locks compartilhados do kernel e flash/cache ainda podem introduzir jitter; os resultados medidos não garantem hard real-time.
 
-- **Core 1 (Laço de Controle de Tempo Real):** Completamente isolado do stack de rede. Acionado pelo modo Contínuo do ADC em hardware (via DMA) a 14,4 kHz por fase. Executa a matemática do Controlador Proporcional-Ressonante (PR), avança uma LUT senoidal de 240 amostras e escreve diretamente no FIFO físico do SPI (`mcp4922_ll_write_channels`). O tempo total com anti-windup deve ser medido em bancada.
-- **Core 0 (Telemetria e Rede):** Roda o FreeRTOS com o stack de Wi-Fi, TLS e MQTT. Calcula as correntes RMS em janelas móveis de 3 ciclos em background e publica payloads JSON de forma segura (MQTTS), sem roubar nem um ciclo de CPU do laço de controle.
+- **Core 1:** Processa um frame de três conversões ADC a 14,4 kHz nominal, executa FIR/PR e escreve no DAC. No modo demo, uma LUT de 240 posições fornece três senos de 60 Hz. O barramento SPI dedicado permanece reservado; as esperas pelo hardware têm timeout e os erros são verificados.
+- **Core 0:** Usa handoff atômico para a captura RMS e consulta a conclusão uma vez por tick. Executa os logs RMS e a apresentação dos diagnósticos. Wi-Fi/MQTT estão desativados por `RUN_WITH_WIFI=0`; habilitá-los exige nova validação temporal.
 
 ## Principais Características
 
-- **Disparo Contínuo via DMA do ADC**: Substitui as interrupções tradicionais de `gptimer` por callbacks de hardware do DMA, garantindo que o laço de controle esteja em perfeita sincronia com a amostragem analógica do mundo físico.
+- **Disparo Contínuo via DMA do ADC**: Libera a tarefa de controle por callbacks de frame DMA do ADC. O instante de amostragem é distinto do instante de execução do callback e da tarefa.
 - **Cadência exata de 60 Hz por LUT**: O controlador ADC é configurado para 14,4 kHz por fase, produzindo exatamente 240 amostras por ciclo de 60 Hz. Uma LUT de 240 amostras avança uma posição por frame, com deslocamentos de 80 e 160 amostras para as demais fases.
-- **Driver SPI DAC em Bare-Metal**: Ignora a camada de abstração do ESP-IDF para o DAC Duplo de 12 bits MCP4922. Elimina bloqueios do FreeRTOS e trocas de contexto, reduzindo a latência de transmissão de >100us para **~3us**.
+- **Driver SPI DAC em Bare-Metal**: Usa escrita direta nos registradores SPI/GPIO do MCP4922, com reserva exclusiva do barramento, esperas limitadas pelo hardware e tratamento de erro. Os relatórios registram custos medidos e limitações.
 - **Controlador Proporcional-Ressonante (PR)**: Componente `esp_pr` multirressonante amortecido, com ganho proporcional comum, sintonia por ramo, saturação e anti-windup configurável. Veja [API, equações e testes](components/esp_pr/README.md).
 - **FIR para tempo real**: Componente reutilizável `esp_fir` para filtros FIR reais arbitrários, com núcleos específicos para simetria e antissimetria, históricos espelhados fornecidos pelo chamador, processamento em IRAM e ausência de alocação ou módulo no caminho por amostra. A aplicação chama diretamente o núcleo simétrico para seu filtro de 15 coeficientes.
 - **Gestão de Energia Wi-Fi & MQTTS**: A potência de transmissão do Wi-Fi é atenuada (`WIFI_DBPOWER`) e o Power Save é desativado para evitar quedas de tensão (brownouts) no hardware e impedir que o ruído cruzado de RF (cross-talk) corrompa as medições analógicas sensíveis.
@@ -23,7 +23,7 @@ Para garantir um determinismo absoluto (latência na casa dos microssegundos) se
 
 ## Estrutura do Projeto
 
-* `components/esp_mcp4922/`: O componente central que contém as implementações de alto nível e bare-metal (`ll`) para o MCP4922.
+* `managed_components/esp_mcp4922/`: Driver MCP4922 obtido por Git e fixado em `main/idf_component.yml`; alterações do código pertencem ao repositório independente do driver.
 * `components/esp_pr/`: Controlador PR reutilizável, estados independentes e testes no computador.
 * `components/esp_fir/`: Núcleos FIR geral, simétrico e antissimétrico reutilizáveis e testes no computador.
 * `main/app_control.c`: Configuração e chamadas diretas ao `esp_pr`, estados das três fases, conversão bipolar para DAC e cálculos de RMS.
@@ -36,7 +36,11 @@ Para garantir um determinismo absoluto (latência na casa dos microssegundos) se
 
 A cada janela de 5 segundos, o reporter publica contagens da janela e totais desde a inicialização. `pool_lost` é perda confirmada pelo buffer do ADC; `backlog` indica atraso acumulado recuperável; `read_errors` indica que uma notificação não pôde formar um frame completo; e `cycle_overruns` compara o tempo em ciclos de CPU com o período exato de 1/14.400 s. O deadline em microssegundos do componente é arredondado para 70 us, enquanto a comparação em ciclos preserva o limite de aproximadamente 69,44 us.
 
-As janelas `quiet` são a referência para o funcionamento normal. Janelas `log-affected` podem incluir perturbação causada pela apresentação anterior. A latência ISR→task aparece como `unmeasured`: a aplicação drena uma notificação por vez e não mantém uma fila de timestamps por frame, portanto atribuir o último timestamp a frames acumulados produziria uma medida ambígua.
+`quiet` e `log-affected` classificam possível interferência da apresentação; nenhuma classificação prova ausência de jitter. Um FIFO de timestamps com sequência mede a latência callback→tarefa, e resumos de etapas/intervalos ajudam a localizar atrasos. Essas medidas não observam diretamente o instante de conversão ou a borda física de LDAC.
+
+A configuração versionada usa `-O2`, FIR `-O3`, opções suportadas de IRAM para FreeRTOS/SPI/ring buffer, geração demo contínua, RMS e logs ativos. A CPU permanece em 160 MHz com PM desabilitado, conforme o contrato do timeout do DAC por ciclos. Uma falha real de transferência DAC para a aquisição e suspende o proprietário, mantendo a reserva de um SPI possivelmente ativo; é necessário reset.
+
+`APP_DIAG_CAPTURE_SECONDS` seleciona capturas finitas em RAM; `APP_DIAG_DISABLE_RMS` e `APP_RMS_LOG_ENABLE` permitem comparações isoladas. O snapshot/publicação periódico dos diagnósticos ainda perturba o laço, sobretudo no primeiro uso. Veja o [guia de medição e seus limites](docs/jitter-diagnostics.md) e a [validação da regressão/correção do DAC](docs/diagnostics/2026-11-11/dac-timeouts.md).
 
 ## Configuração de Hardware
 
@@ -45,13 +49,13 @@ As janelas `quiet` são a referência para o funcionamento normal. Janelas `log-
 
 ## Como Compilar e Rodar
 
-1. Clone o projeto.
-2. Crie o arquivo `main/secrets.txt` com base no `secrets.example.txt` preenchendo suas credenciais:
+1. Clone com submódulos (`git clone --recurse-submodules https://github.com/smartsensingme/esp32-aqdata-3f.git`) ou execute `git submodule update --init --recursive` em um checkout existente.
+2. Se habilitar Wi-Fi/MQTT, crie o arquivo ignorado `main/secrets.txt` com base em `main/secrets.example.txt`, preenchendo suas credenciais:
    ```c
    #define WIFI_PASS "sua_senha_do_wifi"
    #define MQTT_PASS "sua_senha_do_mqtt"
    ```
-3. Ative seu ambiente ESP-IDF v5/v6 (`. export.sh`).
+3. Ative seu ambiente ESP-IDF v6.0 (`. export.sh`).
 4. Compile e grave:
    ```bash
    idf.py build flash monitor
@@ -74,7 +78,7 @@ Diferente de conteúdos superficiais voltados apenas para cliques, este reposit�
 ---
 
 ## 🛠️ Tecnologias
-- **Hardware Target:** ESP32 / ESP32-S3
+- **Hardware Target:** ESP32-S3
 - **Framework:** ESP-IDF v5.x / v6.x
 - **Linguagem:** C / C++
 - **Simulação:** LTSpice (Modelagem de Sensores)
@@ -96,4 +100,4 @@ Engenheiro Eletricista com quase três décadas de experiência no ensino de gra
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
+Este projeto está sob a licença MIT.

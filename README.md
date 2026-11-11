@@ -2,20 +2,20 @@
 
 *Read this in other languages: [Português](README.pt-br.md)*
 
-An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **hard real-time Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with a fixed-rate 60 Hz sine-wave lookup table and isolated Wi-Fi/MQTT telemetry.
+An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **timing-sensitive Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with a fixed-rate 60 Hz sine-wave lookup table and optional Wi-Fi/MQTT telemetry.
 
 ## Core Architecture
 
-To guarantee strict determinism (microsecond latency) without triggering RTOS watchdogs or stalling under heavy network loads, the system leverages asymmetric multicore processing:
+The ADC DMA interrupt and control owner task run on Core 1. RMS processing and diagnostic presentation run on Core 0. Affinity reduces competition, but interrupts, shared kernel locks and flash/cache behavior can still introduce jitter; the measured results are not a hard real-time guarantee.
 
-- **Core 1 (Real-Time Control Loop):** Completely isolated from the network stack. Driven by the hardware ADC Continuous Mode (via DMA) at 14.4kHz per phase. Executes the Proportional-Resonant (PR) math, advances a 240-sample sine LUT, and writes directly to the physical SPI hardware FIFO (`mcp4922_ll_write_channels`). Total loop time with anti-windup must be measured on hardware.
-- **Core 0 (Telemetry & Networking):** Runs the FreeRTOS Wi-Fi, TLS, and MQTT stacks. Calculates RMS currents over 3-cycle windows in the background and publishes JSON payloads securely (MQTTS) without stealing CPU cycles from the control loop.
+- **Core 1:** Processes one three-conversion ADC frame at a nominal 14.4 kHz, runs FIR/PR, and writes the DAC. In demo mode, a 240-entry LUT supplies three 60 Hz sine outputs. The dedicated SPI bus remains reserved; DAC hardware waits have bounded polling and checked errors.
+- **Core 0:** Captures RMS through an atomic buffer handoff and polls for completion once per tick. RMS logs and diagnostic presentation run here. Wi-Fi/MQTT are currently disabled by `RUN_WITH_WIFI=0`; enabling them requires new timing validation.
 
 ## Key Features
 
-- **Continuous ADC DMA Triggering**: Replaces traditional `gptimer` interrupts with hardware DMA callbacks, ensuring the control loop is perfectly synchronized with physical analog sampling.
+- **Continuous ADC DMA Triggering**: Releases the control task from ADC DMA frame callbacks. Sampling time and callback/task execution time are distinct.
 - **Exact 60 Hz LUT Cadence**: The ADC controller is configured for 14.4kHz per phase, yielding exactly 240 samples per 60Hz cycle. A 240-sample LUT advances by one entry per frame, with 80- and 160-sample offsets for the other phases.
-- **Bare-Metal SPI DAC Driver**: Bypasses the ESP-IDF abstraction layer for the MCP4922 12-bit Dual DAC. Eliminates FreeRTOS locks and context checks, reducing transmission latency from >100us to **~3us**.
+- **Bare-Metal SPI DAC Driver**: Uses direct SPI/GPIO register writes for the MCP4922 with exclusive bus ownership, bounded hardware-busy waits and error handling. Measured stage costs and limitations are recorded in the diagnostic reports.
 - **Proportional-Resonant (PR) Controller**: Reusable damped multi-resonant `esp_pr` component with a shared proportional gain, per-branch tuning, output limits and configurable anti-windup. See [API, equations and tests](components/esp_pr/README.md).
 - **Real-Time FIR**: Reusable `esp_fir` component for arbitrary real FIR filters, with dedicated symmetric and antisymmetric kernels, caller-owned mirrored histories, IRAM processing, and no allocation or modulo in the sample path. The application calls the symmetric kernel directly for its 15-tap filter.
 - **Wi-Fi Power Management & MQTTS**: Wi-Fi Tx power is attenuated (`WIFI_DBPOWER`) and Power Save is disabled to prevent hardware brownouts and RF cross-talk from corrupting the sensitive analog measurements.
@@ -23,7 +23,7 @@ To guarantee strict determinism (microsecond latency) without triggering RTOS wa
 
 ## Project Structure
 
-* `components/esp_mcp4922/`: The core driver component containing the high-level and bare-metal (`ll`) implementations for the MCP4922.
+* `managed_components/esp_mcp4922/`: Git-managed MCP4922 driver, pinned in `main/idf_component.yml`; source changes belong to its independent repository.
 * `components/esp_pr/`: Reusable multi-resonant PR controller and host tests.
 * `components/esp_fir/`: Reusable general, symmetric, and antisymmetric FIR kernels and host tests.
 * `main/app_control.c`: Application tuning, direct `esp_pr` integration, DAC conversion, and RMS calculations.
@@ -36,7 +36,11 @@ To guarantee strict determinism (microsecond latency) without triggering RTOS wa
 
 Every five-second window reports window and lifetime counters. `pool_lost` is confirmed ADC pool loss; `backlog` is recoverable accumulated work; `read_errors` means a notification did not yield a complete frame; and `cycle_overruns` compares CPU cycles with the exact 1/14400 s budget. Component microsecond deadlines are rounded up to 70 us, while cycle accounting preserves the approximately 69.44 us boundary.
 
-Use `quiet` windows as the normal-operation baseline. `log-affected` windows may include disturbance from earlier reporter output. ISR-to-task latency is explicitly `unmeasured`: this application drains one notification at a time and has no timestamp queue for accumulated frames, so assigning the newest timestamp would be ambiguous.
+`quiet` and `log-affected` describe possible interference from reporter output; neither proves absence of jitter. A sequence-tagged timestamp FIFO measures callback-to-task latency, and stage/interval summaries help locate delays. These measurements do not directly observe ADC conversion instants or the physical LDAC edge.
+
+The checked-in configuration uses `-O2`, FIR `-O3`, supported FreeRTOS/SPI/ring-buffer IRAM options, continuous demo generation, RMS processing and logs. CPU frequency remains 160 MHz with PM disabled, as required by the DAC cycle-counter timeout contract. A true DAC transfer error stops acquisition and suspends the owner without releasing a possibly active SPI transaction; reset is required.
+
+`APP_DIAG_CAPTURE_SECONDS` selects finite RAM captures; `APP_DIAG_DISABLE_RMS` and `APP_RMS_LOG_ENABLE` allow isolated comparisons. Periodic diagnostic snapshot/publication still perturbs the loop, especially on first use. See the [measurement guide and limits](docs/jitter-diagnostics.md) and [DAC regression/fix validation](docs/diagnostics/2026-11-11/dac-timeouts.md).
 
 ## Hardware Setup
 
@@ -45,13 +49,13 @@ Use `quiet` windows as the normal-operation baseline. `log-affected` windows may
 
 ## How to Build and Run
 
-1. Clone the project.
-2. Create `main/secrets.txt` with your credentials based on `secrets.example.txt`:
+1. Clone the project with submodules (`git clone --recurse-submodules https://github.com/smartsensingme/esp32-aqdata-3f.git`), or run `git submodule update --init --recursive` in an existing checkout.
+2. If enabling Wi-Fi/MQTT, create the ignored `main/secrets.txt` with your credentials based on `main/secrets.example.txt`:
    ```c
    #define WIFI_PASS "your_wifi_password"
    #define MQTT_PASS "your_mqtt_password"
    ```
-3. Activate your ESP-IDF v5/v6 environment (`. export.sh`).
+3. Activate your ESP-IDF v6.0 environment (`. export.sh`).
 4. Build and flash:
    ```bash
    idf.py build flash monitor
@@ -74,7 +78,7 @@ Unlike superficial content aimed only at clicks, this repository delivers:
 ---
 
 ## 🛠️ Technologies
-- **Hardware Target:** ESP32 / ESP32-S3
+- **Hardware Target:** ESP32-S3
 - **Framework:** ESP-IDF v5.x / v6.x
 - **Language:** C / C++
 - **Simulation:** LTSpice (Sensor Modeling)
@@ -96,13 +100,13 @@ Electrical Engineer with nearly three decades of experience in undergraduate and
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## Reusable PR component
 
 `components/esp_pr` contains the controller and portable host tests.
 `main/app_control.c` configures the shared model and independent phase states.
 The initial anti-windup tracking time is 10 ms, configurable under
-**Application PR controller** in menuconfig; zero disables it. Physical-plant
+**Application control** in menuconfig; zero disables it. Physical-plant
 tuning and control-loop timing with anti-windup still require bench validation.
 See [component documentation](components/esp_pr/README.md).

@@ -1,0 +1,18 @@
+Start testing: Nov 08 22:37 -03
+----------------------------------------------------------
+1/1 Testing: telemetry_handoff
+1/1 Test: telemetry_handoff
+Command: "/tmp/aqdata-telemetry-tsan/test_telemetry"
+Directory: /tmp/aqdata-telemetry-tsan
+"telemetry_handoff" start time: Nov 08 22:37 -03
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.94 sec
+----------------------------------------------------------
+Test Passed.
+"telemetry_handoff" end time: Nov 08 22:37 -03
+"telemetry_handoff" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 08 22:37 -03

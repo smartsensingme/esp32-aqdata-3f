@@ -1,0 +1,22 @@
+Start testing: Nov 08 22:12 -03
+----------------------------------------------------------
+1/1 Testing: esp_fir
+1/1 Test: esp_fir
+Command: "/tmp/aqdata-fir-o3-tests/test_esp_fir"
+Directory: /tmp/aqdata-fir-o3-tests
+"esp_fir" start time: Nov 08 22:12 -03
+Output:
+----------------------------------------------------------
+PASS general, odd/even symmetric and antisymmetric kernels
+PASS 511-tap filter without a compiled-in order limit
+PASS startup priming, reset, independent states and validation
+All esp_fir host tests passed.
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"esp_fir" end time: Nov 08 22:12 -03
+"esp_fir" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 08 22:12 -03

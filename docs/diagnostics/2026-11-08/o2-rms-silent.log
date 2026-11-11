@@ -1,0 +1,30 @@
+I (120) esp_image: segment 3: paddr=0003ab60 vaddr=3fc95668 sizevailable for dynamic allocation:
+I (214) heap_init: At 3FC9D6F0 len 0004C020 (304 KiB): RAM
+I (219) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (224) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (230) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (236) spi_flash: detected chip: boya
+I (238) spi_flash: flash io: dio
+W (241) spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (254) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (260) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (267) main_task: Started on CPU0
+I (277) main_task: Calling app_main()
+I (277) main: Starting Digital Control Loop Architecture (ESP32-S3)
+W (277) main: DAC test mode enabled: outputting three-phase 60 Hz sine waves
+I (287) main: Calibration scheme: Curve Fitting
+I (287) main: Pre-computing ADC Calibration LUT...
+I (317) main_task: Returned from app_main()
+I (317) main: Entering DMA Control Loop on Core 1
+I (120317) control_diag: CAPTURE stopped duration_s=120 RMS=on; DAC holds last value
+I (120317) control_diag: RMS console logging=off
+I (120317) control_diag: window=1 [log-affected] duration=120000024us attempts=1727995 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=1/1727995 (0.0001%) exec_max=75us (boot=75us) deadline=70us wake=per-frame
+I (120337) control_diag: window=1 delta(total): generated=1727995(1727995) processed=1727995(1727995) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (120347) control_diag: window=1 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=1/1727995 (1 total) exec_max=11959 cycles(boot=11959) budget=11111 cycles report_errors=0
+I (120367) control_diag: timing us: wake_max=29 valid=1727995 missing=0 stamp_drops=0 ISR=67..70 outside=0 DAC_done=34..78 outside=4 band=62..77
+I (120377) control_diag: stage maxima cycles: ADC=8055 compute=3296 DAC=1320 publish=0 (previous publications) anomalies_dropped=0
+I (120397) control_diag: anomaly seq=2 t32_us=82599 pending=1 wake_us=29 ISR_us=68 DAC_us=34 stage_cycles=950/2248/1281
+I (120407) control_diag: anomaly seq=3 t32_us=82656 pending=1 wake_us=20 ISR_us=67 DAC_us=57 stage_cycles=949/2248/1282
+I (120417) control_diag: anomaly seq=58243 t32_us=4127087 pending=1 wake_us=5 ISR_us=70 DAC_us=61 stage_cycles=977/2265/1287
+I (120427) control_diag: anomaly seq=58244 t32_us=4127165 pending=1 wake_us=14 ISR_us=69 DAC_us=78 stage_cycles=972/2257/1286
+I (120437) control_diag: CAPTURE COMPLETE

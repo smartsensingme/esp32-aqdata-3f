@@ -1,19 +1,25 @@
 #include "app_control.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include <math.h>
+#include <stdatomic.h>
 
+#if CONFIG_APP_RMS_LOG_ENABLE
 static const char *TAG = "app_control";
+#endif
 
 esp_pr_t pr_fase_r, pr_fase_s, pr_fase_t;
 
 // Coeficientes compartilhados em RAM interna; estados separados por fase.
 static DRAM_ATTR esp_pr_model_t pr_model;
 
-volatile bool capture_requested = false;
-volatile int capture_idx = 0;
+/* Control task owns the index and writes samples. The RMS worker publishes
+ * requests and only reads buffers after the release/acquire READY handoff. */
+enum { CAPTURE_IDLE, CAPTURE_REQUESTED, CAPTURE_FILLING, CAPTURE_READY };
+static _Atomic uint32_t capture_state;
+static uint32_t capture_idx;
+_Static_assert(__atomic_always_lock_free(sizeof(uint32_t), 0),
+               "Capture handoff must use lock-free 32-bit atomics");
 static uint16_t dac_history_r[RMS_BUFFER_SIZE];
 static uint16_t dac_history_s[RMS_BUFFER_SIZE];
 static uint16_t dac_history_t[RMS_BUFFER_SIZE];
@@ -26,7 +32,7 @@ void app_control_init(void) {
   enum { RESONATOR_COUNT = sizeof(orders) / sizeof(orders[0]) };
   esp_pr_resonator_config_t branches[RESONATOR_COUNT];
   ESP_ERROR_CHECK(esp_pr_make_harmonics(branches, RESONATOR_COUNT, 60.0f,
-                                      orders, gains, damping));
+                                        orders, gains, damping));
   const esp_pr_config_t config = {
       .sample_rate_hz = 14400.0f,
       .kp = 5.0f,
@@ -67,23 +73,40 @@ uint16_t IRAM_ATTR app_control_voltage_to_dac(float control_voltage) {
   return (uint16_t)(normalized * (float)DAC_MAX_CODE + 0.5f);
 }
 
+bool app_control_request_capture(void) {
+  uint32_t expected = CAPTURE_IDLE;
+  return atomic_compare_exchange_strong_explicit(
+      &capture_state, &expected, CAPTURE_REQUESTED, memory_order_release,
+      memory_order_relaxed);
+}
+
 bool IRAM_ATTR app_control_store_telemetry(uint16_t val_r, uint16_t val_s,
                                            uint16_t val_t) {
-  if (capture_requested) {
-    dac_history_r[capture_idx] = val_r;
-    dac_history_s[capture_idx] = val_s;
-    dac_history_t[capture_idx] = val_t;
-    capture_idx++;
-    if (capture_idx >= RMS_BUFFER_SIZE) {
-      capture_requested = false;
-      return true;
-    }
+  uint32_t state = atomic_load_explicit(&capture_state, memory_order_acquire);
+  if (state == CAPTURE_REQUESTED) {
+    capture_idx = 0;
+    atomic_store_explicit(&capture_state, CAPTURE_FILLING,
+                          memory_order_relaxed);
+  } else if (state != CAPTURE_FILLING) {
+    return false;
+  }
+
+  dac_history_r[capture_idx] = val_r;
+  dac_history_s[capture_idx] = val_s;
+  dac_history_t[capture_idx] = val_t;
+  if (++capture_idx == RMS_BUFFER_SIZE) {
+    atomic_store_explicit(&capture_state, CAPTURE_READY, memory_order_release);
+    return true;
   }
   return false;
 }
 
-void app_control_calc_rms(float *out_rms_r, float *out_rms_s,
+bool app_control_calc_rms(float *out_rms_r, float *out_rms_s,
                           float *out_rms_t) {
+  if (atomic_load_explicit(&capture_state, memory_order_acquire) !=
+      CAPTURE_READY)
+    return false;
+
   float sum_sq_r = 0.0f;
   float sum_sq_s = 0.0f;
   float sum_sq_t = 0.0f;
@@ -118,9 +141,11 @@ void app_control_calc_rms(float *out_rms_r, float *out_rms_s,
   float rms_s = N_COIN_TURNS * sqrtf(sum_sq_s / RMS_BUFFER_SIZE);
   float rms_t = N_COIN_TURNS * sqrtf(sum_sq_t / RMS_BUFFER_SIZE);
 
+#if CONFIG_APP_RMS_LOG_ENABLE
   ESP_LOGI(TAG, "Corrente RMS Fase R: %.3f A", rms_r);
   ESP_LOGI(TAG, "Corrente RMS Fase S: %.3f A", rms_s);
   ESP_LOGI(TAG, "Corrente RMS Fase T: %.3f A", rms_t);
+#endif
 
   if (out_rms_r)
     *out_rms_r = rms_r;
@@ -128,4 +153,8 @@ void app_control_calc_rms(float *out_rms_r, float *out_rms_s,
     *out_rms_s = rms_s;
   if (out_rms_t)
     *out_rms_t = rms_t;
+
+  /* The next request cannot be accepted until the consumer is finished. */
+  atomic_store_explicit(&capture_state, CAPTURE_IDLE, memory_order_release);
+  return true;
 }

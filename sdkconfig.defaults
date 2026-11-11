@@ -1,10 +1,16 @@
 # ==============================================================================
-# Otimizacoes de Tempo Real e IRAM (Evitar Cache Misses no Core 1)
+# Configuracao de desempenho e posicionamento em IRAM
 # ==============================================================================
 
-# Forca as funcoes criticas do FreeRTOS a ficarem na IRAM (Internal RAM)
-CONFIG_FREERTOS_PLACE_FUNCTIONS_INTO_IRAM=y
+# Coloca as funcoes suportadas do FreeRTOS em IRAM (ESP-IDF v6.0).
+CONFIG_FREERTOS_IN_IRAM=y
 
 # Forca o driver do SPI Master e sua ISR a rodarem da IRAM
 CONFIG_SPI_MASTER_IN_IRAM=y
 CONFIG_SPI_MASTER_ISR_IN_IRAM=y
+
+# Coloca as funcoes do ring buffer usado pelo ADC em IRAM.
+CONFIG_RINGBUF_IN_IRAM=y
+
+# Otimiza o firmware para desempenho (-O2).
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
