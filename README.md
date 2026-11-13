@@ -2,14 +2,14 @@
 
 *Read this in other languages: [Português](README.pt-br.md)*
 
-An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **timing-sensitive Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with a fixed-rate 60 Hz sine-wave lookup table and optional Wi-Fi/MQTT telemetry.
+An ultra-low latency, bare-metal optimized digital control architecture for the ESP32-S3. This project demonstrates how to implement a **timing-sensitive Proportional-Resonant (PR) controller** for 3-phase grid systems (e.g., inverters), coupled with a fixed-rate 60 Hz sine-wave lookup table and USB console telemetry.
 
 ## Core Architecture
 
 The ADC DMA interrupt and control owner task run on Core 1. RMS processing and diagnostic presentation run on Core 0. Affinity reduces competition, but interrupts, shared kernel locks and flash/cache behavior can still introduce jitter; the measured results are not a hard real-time guarantee.
 
 - **Core 1:** Processes one three-conversion ADC frame at a nominal 14.4 kHz, runs FIR/PR, and writes the DAC. In demo mode, a 240-entry LUT supplies three 60 Hz sine outputs. The dedicated SPI bus remains reserved; DAC hardware waits have bounded polling and checked errors.
-- **Core 0:** Captures RMS through an atomic buffer handoff and polls for completion once per tick. RMS logs and diagnostic presentation run here. Wi-Fi/MQTT are currently disabled by `RUN_WITH_WIFI=0`; enabling them requires new timing validation.
+- **Core 0:** Captures RMS through an atomic buffer handoff and polls for completion once per tick. RMS logs and diagnostic presentation run here. Wi-Fi/MQTT support has been removed.
 
 ## Key Features
 
@@ -18,7 +18,6 @@ The ADC DMA interrupt and control owner task run on Core 1. RMS processing and d
 - **Bare-Metal SPI DAC Driver**: Uses direct SPI/GPIO register writes for the MCP4922 with exclusive bus ownership, bounded hardware-busy waits and error handling. Measured stage costs and limitations are recorded in the diagnostic reports.
 - **Proportional-Resonant (PR) Controller**: Reusable damped multi-resonant `esp_pr` component with a shared proportional gain, per-branch tuning, output limits and configurable anti-windup. See [API, equations and tests](components/esp_pr/README.md).
 - **Real-Time FIR**: Reusable `esp_fir` component for arbitrary real FIR filters, with dedicated symmetric and antisymmetric kernels, caller-owned mirrored histories, IRAM processing, and no allocation or modulo in the sample path. The application calls the symmetric kernel directly for its 15-tap filter.
-- **Wi-Fi Power Management & MQTTS**: Wi-Fi Tx power is attenuated (`WIFI_DBPOWER`) and Power Save is disabled to prevent hardware brownouts and RF cross-talk from corrupting the sensitive analog measurements.
 - **Real-Time Diagnostics**: `esp_rt_diagnostics` accumulates timings, overruns, and ADC events in the control task. `esp_rt_diagnostics_reporter` moves snapshots to a Core 0 task and classifies windows that may have been affected by reporter logging.
 
 ## Project Structure
@@ -29,8 +28,7 @@ The ADC DMA interrupt and control owner task run on Core 1. RMS processing and d
 * `main/app_control.c`: Application tuning, direct `esp_pr` integration, DAC conversion, and RMS calculations.
 * `main/app_fir.c`: FIR coefficients and the three phase filter histories.
 * `main/app_diagnostics.c`: Control-loop diagnostics, ADC events, and asynchronous Core 0 presentation.
-* `main/main.c`: The orchestrator. Configures the dual-core architecture, ADC DMA, Wi-Fi/MQTT connections, and runs the high-speed critical section.
-* `main/secrets.txt`: (User created) Contains Wi-Fi and MQTT credentials excluded from version control.
+* `main/main.c`: The orchestrator. Configures the dual-core architecture, ADC DMA, and runs the high-speed critical section.
 
 ## Control-loop diagnostics
 
@@ -49,13 +47,8 @@ The checked-in configuration uses `-O2`, FIR `-O3`, supported FreeRTOS/SPI/ring-
 ## How to Build and Run
 
 1. Clone the project with submodules (`git clone --recurse-submodules https://github.com/smartsensingme/esp32-aqdata-3f.git`), or run `git submodule update --init --recursive` in an existing checkout.
-2. If enabling Wi-Fi/MQTT, create the ignored `main/secrets.txt` with your credentials based on `main/secrets.example.txt`:
-   ```c
-   #define WIFI_PASS "your_wifi_password"
-   #define MQTT_PASS "your_mqtt_password"
-   ```
-3. Activate your ESP-IDF v6.0 environment (`. export.sh`).
-4. Build and flash:
+2. Activate your ESP-IDF v6.0 environment (`. export.sh`).
+3. Build and flash:
    ```bash
    idf.py build flash monitor
    ```

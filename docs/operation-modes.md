@@ -28,8 +28,8 @@ Foram removidos `TUNING_IS_ON`, `TUNING_DC_TEST`, `TUNING_AC_TEST`,
 `TUNING_HOLD_NEUTRAL`, `TUNING_DC_REFERENCE_A`, `ADC_QUIET_SPI`,
 `ADC_USE_IDF_TIMING`, captura finita de diagnóstico e desativação de RMS para
 comparação de jitter. Os diagnósticos contínuos de timing permanecem disponíveis
-pelo componente rt_diagnostics. Wi-Fi/MQTT continuam desativados na configuração
-atual. Nenhum ganho foi alterado nesta simplificação.
+pelo componente rt_diagnostics. O suporte a Wi-Fi/MQTT foi removido. O build mínimo inclui apenas as
+dependências declaradas pelo app, sem as pilhas de rede. Nenhum ganho foi alterado nesta simplificação.
 
 ## Relatórios
 
@@ -63,3 +63,14 @@ Verificações desta revisão: build ESP-IDF passou em malha fechada, demo e
 polaridade; artefato final restaurado para ambos os flags zero. Passaram sete
 testes host: offsets, dois de estatística/FIR, controle paralelo, dois de
 telemetria e polaridade. Não são provas de deadlines no hardware.
+
+## ADC2 no ESP32-S3
+
+A aquisição atual continua no ADC1 via DMA. A ESP-IDF v6.0 documenta que ADC2
+em DMA não é suportado normalmente por resultados instáveis (limitação de
+hardware). A opção de forçar ADC2 não remove a errata. Retirar Wi-Fi não torna
+essa aquisição confiável. ADC2 oneshot é um caso separado; compartilha recursos
+com Wi-Fi, e o driver oferece arbitragem. Não foi feita migração para ADC2.
+
+Referências: [ADC contínuo](https://docs.espressif.com/projects/esp-idf/en/v6.0/esp32s3/api-reference/peripherals/adc/adc_continuous.html#hardware-limitations),
+[ADC oneshot](https://docs.espressif.com/projects/esp-idf/en/v6.0/esp32s3/api-reference/peripherals/adc/adc_oneshot.html#hardware-limitations).

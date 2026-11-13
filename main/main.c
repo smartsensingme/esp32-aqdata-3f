@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "app_mqtt.h"
 
 static const char *TAG = "main";
 
@@ -708,9 +707,6 @@ static void rms_calc_task(void *arg) {
     }
 
     ++report_number;
-#if RUN_WITH_WIFI
-    app_mqtt_publish_rms(rms_r, rms_s, rms_t);
-#endif
   }
 }
 
@@ -767,9 +763,6 @@ void app_main(void) {
   return;
 #endif
 
-#if RUN_WITH_WIFI
-  app_mqtt_init();
-#endif
 
   app_control_init();
   ESP_LOGI(TAG,

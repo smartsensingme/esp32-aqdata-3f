@@ -18,8 +18,8 @@ CONFIG_COMPILER_OPTIMIZATION_PERF=y
 # Active-low offset calibration request at startup (internal pull-up).
 CONFIG_APP_OFFSET_CAL_GPIO=7
 
-# R-only commissioning, bounded actuation.
+# Shared symmetric command limit for all three phases.
 CONFIG_APP_CONTROL_LIMIT_MV=6000
 
-# Keep the portable shared-actuator calculation in internal instruction RAM.
+# Keep the shared-actuator coordinator in internal instruction RAM.
 CONFIG_ESP_ANTI_WINDUP_IRAM=y

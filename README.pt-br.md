@@ -2,14 +2,14 @@
 
 *Leia em outros idiomas: [English](README.md)*
 
-Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) com requisitos temporais** para sistemas de rede trifásica (ex: inversores), acoplado a uma tabela de seno de 60 Hz com taxa fixa e telemetria Wi-Fi/MQTT opcional.
+Uma arquitetura de controle digital de latência ultrabaixa e otimizada em bare-metal para o ESP32-S3. Este projeto demonstra como implementar um **controlador Proporcional-Ressonante (PR) com requisitos temporais** para sistemas de rede trifásica (ex: inversores), acoplado a uma tabela de seno de 60 Hz com taxa fixa e telemetria pelo console USB.
 
 ## Arquitetura Central
 
 A interrupção DMA do ADC e a tarefa proprietária do controle ficam no Core 1. O processamento RMS e a apresentação dos diagnósticos ficam no Core 0. A afinidade reduz competição, mas interrupções, locks compartilhados do kernel e flash/cache ainda podem introduzir jitter; os resultados medidos não garantem hard real-time.
 
 - **Core 1:** Processa um frame de três conversões ADC a 14,4 kHz nominal, executa FIR/PR e escreve no DAC. No modo demo, uma LUT de 240 posições fornece três senos de 60 Hz. O barramento SPI dedicado permanece reservado; as esperas pelo hardware têm timeout e os erros são verificados.
-- **Core 0:** Usa handoff atômico para a captura RMS e consulta a conclusão uma vez por tick. Executa os logs RMS e a apresentação dos diagnósticos. Wi-Fi/MQTT estão desativados por `RUN_WITH_WIFI=0`; habilitá-los exige nova validação temporal.
+- **Core 0:** Usa handoff atômico para a captura RMS e consulta a conclusão uma vez por tick. Executa os logs RMS e a apresentação dos diagnósticos. O suporte a Wi-Fi/MQTT foi removido.
 
 ## Principais Características
 
@@ -18,7 +18,6 @@ A interrupção DMA do ADC e a tarefa proprietária do controle ficam no Core 1.
 - **Driver SPI DAC em Bare-Metal**: Usa escrita direta nos registradores SPI/GPIO do MCP4922, com reserva exclusiva do barramento, esperas limitadas pelo hardware e tratamento de erro. Os relatórios registram custos medidos e limitações.
 - **Controlador Proporcional-Ressonante (PR)**: Componente `esp_pr` multirressonante amortecido, com ganho proporcional comum, sintonia por ramo, saturação e anti-windup configurável. Veja [API, equações e testes](components/esp_pr/README.md).
 - **FIR para tempo real**: Componente reutilizável `esp_fir` para filtros FIR reais arbitrários, com núcleos específicos para simetria e antissimetria, históricos espelhados fornecidos pelo chamador, processamento em IRAM e ausência de alocação ou módulo no caminho por amostra. A aplicação chama diretamente o núcleo simétrico para seu filtro de 15 coeficientes.
-- **Gestão de Energia Wi-Fi & MQTTS**: A potência de transmissão do Wi-Fi é atenuada (`WIFI_DBPOWER`) e o Power Save é desativado para evitar quedas de tensão (brownouts) no hardware e impedir que o ruído cruzado de RF (cross-talk) corrompa as medições analógicas sensíveis.
 - **Diagnóstico de Tempo Real**: `esp_rt_diagnostics` acumula tempos, overruns e eventos na task de controle. `esp_rt_diagnostics_reporter` transfere snapshots para uma task no Core 0 e classifica janelas possivelmente afetadas pelos próprios logs.
 
 ## Estrutura do Projeto
@@ -29,8 +28,7 @@ A interrupção DMA do ADC e a tarefa proprietária do controle ficam no Core 1.
 * `main/app_control.c`: Configuração e chamadas diretas ao `esp_pr`, estados das três fases, conversão bipolar para DAC e cálculos de RMS.
 * `main/app_fir.c`: Coeficientes FIR e históricos dos filtros das três fases.
 * `main/app_diagnostics.c`: Integração do diagnóstico, eventos do ADC e apresentação assíncrona no Core 0.
-* `main/main.c`: O orquestrador. Configura a arquitetura dual-core, o DMA do ADC, as conexões Wi-Fi/MQTT e executa a seção crítica de altíssima velocidade.
-* `main/secrets.txt`: (Criado pelo usuário) Contém as credenciais de Wi-Fi e MQTT, ignoradas pelo controle de versão.
+* `main/main.c`: O orquestrador. Configura a arquitetura dual-core, o DMA do ADC e executa a seção crítica de altíssima velocidade.
 
 ## Diagnóstico do laço
 
@@ -49,13 +47,8 @@ A configuração versionada usa `-O2`, FIR `-O3`, opções suportadas de IRAM pa
 ## Como Compilar e Rodar
 
 1. Clone com submódulos (`git clone --recurse-submodules https://github.com/smartsensingme/esp32-aqdata-3f.git`) ou execute `git submodule update --init --recursive` em um checkout existente.
-2. Se habilitar Wi-Fi/MQTT, crie o arquivo ignorado `main/secrets.txt` com base em `main/secrets.example.txt`, preenchendo suas credenciais:
-   ```c
-   #define WIFI_PASS "sua_senha_do_wifi"
-   #define MQTT_PASS "sua_senha_do_mqtt"
-   ```
-3. Ative seu ambiente ESP-IDF v6.0 (`. export.sh`).
-4. Compile e grave:
+2. Ative seu ambiente ESP-IDF v6.0 (`. export.sh`).
+3. Compile e grave:
    ```bash
    idf.py build flash monitor
    ```
