@@ -43,7 +43,8 @@ A cada captura: `Icomp_mean` (DC/média com sinal), `Icomp_rms` (RMS total) e
 um segundo sensor de corrente. A cada sexta captura, aproximadamente 60 s:
 relatório R adicional de DAC, mínimo/máximo dos códigos, ADC calibrado antes do
 FIR e tensão reconstruída após FIR normalizado em DC. Para ADC/FIR: média/DC,
-RMS total, desvio padrão populacional e mínimo/máximo. DC e média são a mesma
+RMS total, desvio padrão populacional e mínimo/máximo, mais bins de residual
+RMS em 60/120/180/300/420 Hz. DC e média são a mesma
 grandeza; desvio padrão populacional equivale ao RMS da componente sem DC.
 Para uma entrada AC, isso inclui o sinal desejado, não apenas ruído.
 
@@ -97,3 +98,11 @@ CPU por frame passa a 16.666 ciclos; o prazo/amostragem continuam 70 us/14,4 kHz
 e o SPI permanece configurado para 20 MHz. Ganhos e watchdogs não foram alterados.
 O código calcula o orçamento de diagnóstico e timeout SPI pela frequência de
 CPU configurada. A validação da folga efetiva exige novo ensaio no hardware.
+
+## Sintonia após varredura de PR/Ki
+
+Em 13/11/2026 foram feitas 23 coletas com variações individuais nos cinco PR
+e em Ki, com referência assumida de 0,541 A. Após revisão/confirmação, apenas
+Kr120 passou de 1 para 2. Kp=0,5, Ki=10 e Kr60/180/300/420=14/3/2/1 foram
+preservados. Valores compartilhados pelas fases; somente R validada com sensor.
+Veja [resultados e limitações](diagnostics/2026-11-13/pr-gain-sweep.md).

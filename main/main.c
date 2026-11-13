@@ -815,9 +815,12 @@ void app_main(void) {
 
   app_control_init();
   ESP_LOGI(TAG,
-           "Control gains: PR Kp=%.3g Kr60=%.3g; PID Kp=0 Ki=%.3g Kd=0; "
+           "Control gains: PR Kp=%.3g Kr60=%.3g Kr120=%.3g Kr180=%.3g "
+           "Kr300=%.3g Kr420=%.3g; PID Kp=0 Ki=%.3g Kd=0; "
            "phases=R/S/T; normal limit=%.3f Vsoft",
            (double)APP_CONTROL_KP, (double)APP_CONTROL_KR60,
+           (double)APP_CONTROL_KR120, (double)APP_CONTROL_KR180,
+           (double)APP_CONTROL_KR300, (double)APP_CONTROL_KR420,
            (double)APP_CONTROL_KI,
            (double)(CONFIG_APP_CONTROL_LIMIT_MV / 1000.0f));
   app_fir_init();

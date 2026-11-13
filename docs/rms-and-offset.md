@@ -68,3 +68,19 @@ O relatório de corrente agora expõe `Icomp_ac_rms` além de `Icomp_mean` e
 a componente AC; para AC+DC, use RMS total. A indicação True RMS sozinha não
 define a inclusão de DC, a banda ou a precisão do instrumento. Os valores são
 estimados a partir do comando DAC, não medidos por um ADC no resistor secundário.
+
+## Residuais por frequência na fase R
+
+O relatório detalhado também calcula bins DFT nominais em 60, 120, 180, 300 e
+420 Hz para ADC e FIR. A média é removida antes da projeção, e o módulo é
+convertido para RMS da senoide correspondente. A janela de 100 ms contém um
+número inteiro de ciclos dessas frequências a Fs=14,4 kHz. É uma estimativa por
+bin, não análise de banda completa nem medição da frequência real da rede;
+desvios de frequência e janelamento podem causar leakage. Não representa todo
+o ruído ou harmônicos fora dos cinco bins.
+
+O cálculo usa os buffers já existentes e roda somente no worker Core 0 após a
+captura, sem alocação ou novas operações por frame no laço de controle. Foram
+testados DC mais senoides conhecidas em 60/180 Hz, rejeição do bin 120 Hz sem
+sinal e argumentos inválidos. Compare o ramo PR pelo seu bin e pelo residual
+global, acompanhando também esforço/limites do atuador e a corrente estimada.

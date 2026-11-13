@@ -35,7 +35,7 @@ no Core 1. O modelo PR é compartilhado e imutável; estados/modelos ficam em RA
 interna. Inicialize antes de habilitar a aquisição. A cada frame processado,
 `dt=1/14400 s`. Não há alocação, NVS ou formatação de log no caminho periódico.
 
-Ganhos atuais em `main/app_control.h`: Kp=0,5, Ki=10, Kr60=14, Kr120=1,
+Ganhos atuais em `main/app_control.h`: Kp=0,5, Ki=10, Kr60=14, Kr120=2,
 Kr180=3, Kr300=2 e Kr420=1, com damping de 5 Hz nos ressonantes. O PID usa
 Kp=Kd=0; portanto, há um único proporcional. Ganhos e estados não são
 persistidos na NVS. O erro analógico já chega formado; ambos os componentes
@@ -151,7 +151,7 @@ reserva 90% do limite ao PR e 10% ao integral, sem aumentar o limite total
 antes de iniciar a aquisição. `app_parallel_init()` exige limites PR
 simétricos e menores que o limite total e usa o restante no integral.
 
-Ganhos AC provisórios: Kp=0,5, Kr60=14, Kr120=1, Kr180=3, Kr300=2, Kr420=1 e Ki=0. O integral foi desativado
+Ganhos AC provisórios: Kp=0,5, Kr60=14, Kr120=2, Kr180=3, Kr300=2, Kr420=1 e Ki=0. O integral foi desativado
 neste ensaio porque apareceu deslocamento DC médio de aproximadamente
 −188 mV em relação ao offset NVS (1,538703 V), levando o orçamento de 10%
 do integral à saturação. Isso **não resolve nem valida a medição DC**.

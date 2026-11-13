@@ -27,9 +27,37 @@ static inline float app_signal_rms(const app_signal_stats_t *s) {
   return s->n ? hypotf(s->mean, ac) : 0.0f;
 }
 
-static inline void APP_STATS_HOT app_compensated_add(float *sum, float *correction, float x) {
+static inline void APP_STATS_HOT app_compensated_add(float *sum,
+                                                     float *correction,
+                                                     float x) {
   const float y = x - *correction;
   const float t = *sum + y;
   *correction = (t - *sum) - y;
   *sum = t;
+}
+
+/* Worker-only single-frequency DFT, RMS of an integer-cycle sinusoid.
+ * Samples in volts (or any consistent unit); mean is removed explicitly.
+ * Caller chooses a frequency that spans an integer number of cycles in n/Fs.
+ * No allocation; floating oscillator avoids per-sample transcendental math.
+ * Invalid arguments return NaN. This is a spectral bin, not broadband RMS. */
+static inline float app_signal_harmonic_rms(const float *samples, uint32_t n,
+                                            float mean, float frequency_hz,
+                                            float sample_rate_hz) {
+  if (!samples || !n || !isfinite(mean) || !isfinite(frequency_hz) ||
+      !isfinite(sample_rate_hz) || frequency_hz <= 0 ||
+      frequency_hz >= 0.5f * sample_rate_hz)
+    return NAN;
+  const float angle = 6.283185307179586f * frequency_hz / sample_rate_hz;
+  const float dc = cosf(angle), ds = sinf(angle);
+  float c = 1, s = 0, real = 0, imag = 0;
+  for (uint32_t i = 0; i < n; ++i) {
+    const float value = samples[i] - mean;
+    real += value * c;
+    imag += value * s;
+    const float next_c = c * dc - s * ds;
+    s = s * dc + c * ds;
+    c = next_c;
+  }
+  return 1.4142135623730951f * hypotf(real, imag) / (float)n;
 }

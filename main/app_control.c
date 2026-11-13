@@ -210,6 +210,17 @@ bool app_control_calc_rms_report(float *out_rms_r, float *out_rms_s,
                  1000.0f * app_signal_ac_rms(&filtered));
         ESP_LOGI(TAG, "R min/max: ADC=%.6f/%.6f FIR=%.6f/%.6f V", raw_min,
                  raw_max, fir_min, fir_max);
+        const unsigned harmonic_hz[] = {60, 120, 180, 300, 420};
+        for (unsigned h = 0; h < 5; ++h) {
+          const float raw_h = app_signal_harmonic_rms(
+              adc_history[phase], RMS_BUFFER_SIZE, raw.mean,
+              (float)harmonic_hz[h], 14400.0f);
+          const float fir_h = app_signal_harmonic_rms(
+              filtered_history[phase], RMS_BUFFER_SIZE, filtered.mean,
+              (float)harmonic_hz[h], 14400.0f);
+          ESP_LOGI(TAG, "Harm R %uHz: ADC_rms=%.6f FIR_rms=%.6f mV",
+                   harmonic_hz[h], 1000.0f * raw_h, 1000.0f * fir_h);
+        }
       }
     }
   }

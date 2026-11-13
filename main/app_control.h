@@ -8,7 +8,7 @@
 // Shared provisional gains for R/S/T; validate against the connected plant.
 #define APP_CONTROL_KP 0.5f
 #define APP_CONTROL_KR60 14.0f
-#define APP_CONTROL_KR120 1.0f
+#define APP_CONTROL_KR120 2.0f
 #define APP_CONTROL_KR180 3.0f
 #define APP_CONTROL_KR300 2.0f
 #define APP_CONTROL_KR420 1.0f

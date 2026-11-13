@@ -1,0 +1,17 @@
+{
+  "assumed_reference_A": 0.541,
+  "selected": {
+    "KP": 0.5,
+    "KR60": 14.0,
+    "KR120": 2.0,
+    "KR180": 3.0,
+    "KR300": 2.0,
+    "KR420": 1.0,
+    "KI": 10.0
+  },
+  "decision": "Kr120=2 retained after reviewing two captures; marginal 5% automatic screen was conservative; repeated approximately 5-6% global and 8-9% targeted reduction plus AC agreement justified manual selection. Others restored to original after weak/unconfirmed benefits.",
+  "validation_series": "pr-coordinate-refinement",
+  "validation_trial": "99-final-confirmation-75s",
+  "detail_ac_A": 0.543431,
+  "detail_residual_mV": 122.142
+}
