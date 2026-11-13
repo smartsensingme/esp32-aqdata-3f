@@ -17,8 +17,10 @@ O RMS AC de comando aumentou 11,43% e o residual global aumentou 1,02%.
 Não foi medido o espectro do residual: estes valores não demonstram a resposta
 isolada do harmônico de 60 Hz nem identificam a planta.
 
-Foi solicitada a leitura do multímetro ao fim; ainda não recebida ao registrar
-este resultado. Não se calcula erro percentual com uma referência antiga.
+O usuário informou 0,539 A no multímetro ao fim da coleta. Comparando com
+0,599480 A RMS AC do firmware, a diferença é +0,060480 A (+11,22%). Essa
+comparação pressupõe que o modo do instrumento mede AC sem DC; banda e
+exatidão do instrumento não foram verificadas neste ensaio.
 
 12 janelas, 863.996 ciclos, um atraso de prazo no transiente inicial, sem
 watchdog, backlog, perda de pool ou erro ADC nos logs. Não há prova de ausência
