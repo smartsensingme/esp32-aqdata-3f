@@ -62,3 +62,9 @@ nova normalização FIR ainda precisa de validação física, não foi acionada 
 ensaio finito. A placa terminou no neutro.
 
 [Registro do ensaio de RMS](diagnostics/2026-11-11/rms-reporting.md).
+
+O relatório de corrente agora expõe `Icomp_ac_rms` além de `Icomp_mean` e
+`Icomp_rms`. Para comparar com um multímetro em corrente AC que rejeita DC, use
+a componente AC; para AC+DC, use RMS total. A indicação True RMS sozinha não
+define a inclusão de DC, a banda ou a precisão do instrumento. Os valores são
+estimados a partir do comando DAC, não medidos por um ADC no resistor secundário.

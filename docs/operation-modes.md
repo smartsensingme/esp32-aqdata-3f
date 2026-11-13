@@ -38,8 +38,8 @@ Com `CONFIG_APP_RMS_LOG_ENABLE=y`, um worker Core 0 solicita uma captura a cada
 não os dez segundos inteiros. O controle só copia dados durante a captura;
 formatação/cálculos ficam no worker, com um único buffer pendente.
 
-A cada captura: `Icomp_mean` (DC/média com sinal) e `Icomp_rms` (RMS total) das
-três correntes de compensação estimadas a partir dos DACs. Não são leituras de
+A cada captura: `Icomp_mean` (DC/média com sinal), `Icomp_rms` (RMS total) e
+`Icomp_ac_rms` (RMS após retirar a média) das três correntes de compensação estimadas a partir dos DACs. Não são leituras de
 um segundo sensor de corrente. A cada sexta captura, aproximadamente 60 s:
 relatório R adicional de DAC, mínimo/máximo dos códigos, ADC calibrado antes do
 FIR e tensão reconstruída após FIR normalizado em DC. Para ADC/FIR: média/DC,

@@ -1,0 +1,41 @@
+[
+  {
+    "capture": "kp1-monitor",
+    "dc_A": 0.523863,
+    "total_rms_A": 0.761972,
+    "ac_rms_A": 0.553325,
+    "filtered_mean_V": 1.54578,
+    "residual_ac_mV": 127.72,
+    "deadline_overruns": 1,
+    "cycles": 863996,
+    "watchdog": false,
+    "meter_end_A": 0.546,
+    "ac_difference_percent": 1.3415750915750868
+  },
+  {
+    "capture": "kp2-monitor",
+    "dc_A": 0.522211,
+    "total_rms_A": 0.775839,
+    "ac_rms_A": 0.573779,
+    "filtered_mean_V": 1.545608,
+    "residual_ac_mV": 117.809,
+    "deadline_overruns": 1,
+    "cycles": 863996,
+    "watchdog": false,
+    "meter_end_A": 0.543,
+    "ac_difference_percent": 5.668324125230195
+  },
+  {
+    "capture": "kp05-confirm-monitor",
+    "dc_A": 0.519083,
+    "total_rms_A": 0.747591,
+    "ac_rms_A": 0.538001,
+    "filtered_mean_V": 1.543839,
+    "residual_ac_mV": 129.521,
+    "deadline_overruns": 1,
+    "cycles": 863996,
+    "watchdog": false,
+    "meter_end_A": 0.543,
+    "ac_difference_percent": -0.9206261510129043
+  }
+]

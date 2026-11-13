@@ -63,5 +63,24 @@ int main(void) {
                 &mean, &rms) == 2);
   assert(fabsf(mean - app_control_dac_to_primary_current(2592)) < 1e-5f);
   assert(fabsf(mean - rms) < 1e-5f);
+  // Verify the new AC-only field independently from DC and total RMS.
+  log_text[0] = '\0';
+  assert(app_control_request_capture());
+  for (unsigned i = 0; i < RMS_BUFFER_SIZE; ++i) {
+    const uint16_t alternating[3] = {i % 2 ? 2560 : 2304, 2048, 2048};
+    (void)app_control_store_sample(alternating, filtered, filtered);
+  }
+  assert(app_control_calc_rms(&current, NULL, NULL));
+  comp = strstr(log_text, "Compensacao estimada R:");
+  float ac;
+  assert(comp && sscanf(comp,
+                        "Compensacao estimada R: Icomp_mean=%f Icomp_rms=%f A; "
+                        "Icomp_ac_rms=%f A",
+                        &mean, &rms, &ac) == 3);
+  const float low = app_control_dac_to_primary_current(2304);
+  const float high = app_control_dac_to_primary_current(2560);
+  assert(fabsf(mean - (high + low) * 0.5f) < 1e-5f);
+  assert(fabsf(ac - (high - low) * 0.5f) < 1e-5f);
+  assert(fabsf(rms - hypotf(mean, ac)) < 1e-5f);
   puts("ADC/FIR/current/DAC capture and reporting passed");
 }

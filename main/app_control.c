@@ -178,8 +178,10 @@ bool app_control_calc_rms_report(float *out_rms_r, float *out_rms_s,
       if (code > code_max)
         code_max = code;
     }
-    ESP_LOGI(TAG, "Compensacao estimada %c: Icomp_mean=%+.6f Icomp_rms=%.6f A",
-             name, current.mean, currents[phase]);
+    ESP_LOGI(TAG,
+             "Compensacao estimada %c: Icomp_mean=%+.6f Icomp_rms=%.6f A; "
+             "Icomp_ac_rms=%.6f A",
+             name, current.mean, currents[phase], app_signal_ac_rms(&current));
     if (detailed && phase == 0) {
       ESP_LOGI(
           TAG,
