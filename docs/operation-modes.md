@@ -82,3 +82,18 @@ SPI no neutro. Não é reprodução da carga computacional dos controladores.
 Watchdogs permanecem ativos. Backlog, overflow e dados inválidos rejeitam a
 calibração sem gravar NVS, com motivo e máximo de notificações no log.
 A execução na placa dessa correção ainda precisa ser verificada.
+
+## Folga de CPU na operação trifásica
+
+Após a calibração corrigida, um ensaio a 160 MHz gravou os três offsets e depois
+acionou o watchdog de IDLE1 em malha fechada. A primeira janela indicou 29.198
+atrasos em 71.995 ciclos (40,5556%), embora só duas execuções isoladas tivessem
+excedido 11.111 ciclos. A espera/despertar também consome o prazo de 70 us. O
+backtrace no SPI não demonstra transação travada, e a janela afetada pelo dump
+do watchdog não serve para estimar execução normal.
+
+A configuração passou a 240 MHz para aumentar folga. O orçamento nominal de
+CPU por frame passa a 16.666 ciclos; o prazo/amostragem continuam 70 us/14,4 kHz
+e o SPI permanece configurado para 20 MHz. Ganhos e watchdogs não foram alterados.
+O código calcula o orçamento de diagnóstico e timeout SPI pela frequência de
+CPU configurada. A validação da folga efetiva exige novo ensaio no hardware.

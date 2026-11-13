@@ -23,3 +23,6 @@ CONFIG_APP_CONTROL_LIMIT_MV=6000
 
 # Keep the shared-actuator coordinator in internal instruction RAM.
 CONFIG_ESP_ANTI_WINDUP_IRAM=y
+
+# Three-phase PR+I at 14.4 kHz needs more scheduling headroom than 160 MHz.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
