@@ -1,0 +1,83 @@
+--- esp-idf-monitor 1.10.0 on /dev/cu.usbmodem831101 115200
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
+Executing action: monitor
+Running idf_monitor in directory /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f
+Executing "/Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python /Users/jalexdefranca/.espressif/v6.0/esp-idf/tools/idf_monitor.py -p /dev/cu.usbmodem831101 -b 115200 --toolchain-prefix xtensa-esp32s3-elf- --target esp32s3 --revision 0 /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/esp32-esp_mcp_4922.elf /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/bootloader/bootloader.elf -m '/Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python' '/Users/jalexdefranca/.espressif/v6.0/esp-idf/tools/idf.py' '-p' '/dev/cu.usbmodem831101'"...
+I (122) esp_image: segment 3: paddr=0003d11c vaddr=3fc98440 sizeESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037cd46
+--- 0x4037cd46: esp_cpu_wait_for_intr at /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/esp_hw_support/cpu.c:64
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xda0
+--- 0x403c8700: _stext at ??:?
+load:0x403cb700,len:0x2f58
+entry 0x403c8908
+--- 0x403c8908: call_start_cpu0 at /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/bootloader/subproject/main/bootloader_start.c:27
+I (24) boot: ESP-IDF v6.0 2nd stage bootloader
+I (24) boot: compile time Nov  8 2026 22:45:16
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (35) boot.esp32s3: SPI Mode       : DIO
+I (39) boot.esp32s3: SPI Flash Size : 2MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (56) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (62) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (69) boot:  2 factory          factory app      00 00 00010000 00100000
+I (75) boot: End of partition table
+I (79) esp_image: segment 0: paddr=00010020 vaddr=3c020020 size=0edb0h ( 60848) map
+I (97) esp_image: segment 1: paddr=0001edd8 vaddr=3fc97200 size=01240h (  4672) load
+I (98) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=1d0f4h (119028) map
+I (122) esp_image: segment 3: paddr=0003d11c vaddr=3fc98440 size=045cch ( 17868) load
+I (126) esp_image: segment 4: paddr=000416f0 vaddr=40374000 size=130fch ( 78076) load
+I (144) esp_image: segment 5: paddr=000547f4 vaddr=50000000 size=00024h (    36) load
+I (153) boot: Loaded app from partition at offset 0x10000
+I (153) boot: Disabling RNG early entropy source...
+I (163) cpu_start: Multicore app
+I (171) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (172) cpu_start: Pro cpu start user code
+I (172) cpu_start: cpu freq: 160000000 Hz
+I (173) app_init: Application information:
+I (177) app_init: Project name:     esp32-esp_mcp_4922
+I (182) app_init: App version:      188f0ce-dirty
+I (187) app_init: Compile time:     Nov 11 2026 22:09:05
+I (192) app_init: ELF file SHA256:  59cad6947...
+I (196) app_init: ESP-IDF:          v6.0
+I (200) efuse_init: Min chip rev:     v0.0
+I (203) efuse_init: Max chip rev:     v0.99 
+I (207) efuse_init: Chip rev:         v0.2
+I (211) heap_init: Initializing. RAM available for dynamic allocation:
+I (218) heap_init: At 3FCA1860 len 00047EB0 (287 KiB): RAM
+I (223) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (228) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (233) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (239) spi_flash: detected chip: boya
+I (242) spi_flash: flash io: dio
+W (245) spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (257) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (263) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (270) main_task: Started on CPU0
+I (280) main_task: Calling app_main()
+I (280) main: Starting Digital Control Loop Architecture (ESP32-S3)
+I (280) main: Calibration scheme: Curve Fitting
+I (290) main: Pre-computing ADC Calibration LUT...
+I (310) main: Control gains: PR Kp=0.2 Kr60=0; PID Kp=0 Ki=10 Kd=0; phase mask=1; normal limit=2.000 Vsoft
+I (320) offsets: Loaded offsets from NVS
+I (380) offsets: Offsets R/S/T: 1.495515 / 0.354058 / 0.036351 V
+W (380) tuning: Finite R-only tuning: 8 s neutral + 60 s selected gains; discard first 2 s/stage; bounded output, no NVS writes
+W (380) tuning: DC TEST: R only, PR Kp=0.2/Kr60=0 + PID Kp=0/Ki=10/Kd=0; 4 s neutral + 60 s closed loop; expected external |I|=0.800 A
+W (390) tuning: Total +/-2 Vsoft (~1.10 A), PR budget 10% / integral 90%; ADC protection 0.1..3.0 V; final 10 s statistics
+I (400) main_task: Returned from app_main()
+I (400) main: Entering DMA Control Loop on Core 1
+I (410) main: ADC driver initialized on Core 1
+I (9510) tuning: TUNING STOPPED: 100 ms continuously at test limit; DAC neutral, control stopped
+I (9510) tuning: Last raw_error=-0.012515 filtered_error=0.015446 V backlog=1 (ADC voltage=raw_error+loaded offset)
+I (9510) tuning: ADC: media=1.637283 RMS=1.637360 V; ruido_RMS=15.912 mV; erro_filtrado_RMS=143.315 mV
+I (9520) tuning: DC stage=0 n=28800 Icomp_mean=+0.000000 Icomp_rms=0.000000 A; residual_mean=+143.116 residual_ac=7.561 mV; command_peak=0.0000 Vsoft; limited=0.000%
+I (9540) tuning: DC branch limits: PR 0.000% / PID 0.000% of useful samples

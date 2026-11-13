@@ -21,3 +21,7 @@ dependencies:
   esp_rt_diagnostics_reporter:
     git: https://github.com/smartsensingme/esp_rt_diagnostics_reporter.git
     version: 0a76029901659370ea7c2b5a0741ffe0a2bcee14
+
+  esp_pid:
+    git: https://github.com/smartsensingme/esp_pid.git
+    version: 6f0e5092a8a86089511c4040ce7396d34c43cef6

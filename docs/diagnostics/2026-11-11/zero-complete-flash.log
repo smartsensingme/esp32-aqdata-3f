@@ -1,0 +1,78 @@
+Adding "flash"'s dependency "all" to list of commands with default set of options.
+Executing action: all (aliases: build)
+Running ninja in directory /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build
+Executing "ninja all"...
+[1/4] cd /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build && /Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/partition_table/partition-table.bin /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/esp32-esp_mcp_4922.bin
+esp32-esp_mcp_4922.bin binary size 0x452d0 bytes. Smallest app partition is 0x100000 bytes. 0xbad30 bytes (73%) free.
+[2/4] Performing build step for 'bootloader'
+[1/1] cd /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/bootloader && /Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/bootloader/bootloader.bin
+Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
+[3/4] No install step for 'bootloader'
+[4/4] Completed 'bootloader'
+Executing action: flash
+Running ninja in directory /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build
+Executing "ninja flash"...
+[1/5] cd /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build && /Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/partition_table/partition-table.bin /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/esp32-esp_mcp_4922.bin
+esp32-esp_mcp_4922.bin binary size 0x452d0 bytes. Smallest app partition is 0x100000 bytes. 0xbad30 bytes (73%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] cd /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/bootloader && /Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/bootloader/bootloader.bin
+Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] Running utility command for flash
+esptool --chip esp32s3 -p /dev/cu.usbmodem831101 -b 460800 --before=default-reset --after=hard-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 2MB 0x0 bootloader/bootloader.bin 0x8000 partition_table/partition-table.bin 0x10000 esp32-esp_mcp_4922.bin
+esptool v5.6.0
+Serial port /dev/cu.usbmodem831101:
+Connecting...
+Connected to ESP32-S3 on /dev/cu.usbmodem831101:
+Chip type:          ESP32-S3 (QFN56) (revision v0.2)
+Features:           Wi-Fi, BT 5 (LE), Dual Core + LP Core, 240MHz, Embedded PSRAM 8MB (AP_3v3)
+Crystal frequency:  40MHz
+USB mode:           USB-Serial/JTAG
+MAC:                28:84:85:86:69:40
+
+Uploading stub flasher...
+Running stub flasher...
+Stub flasher running.
+Changing baud rate to 460800...
+Changed.
+
+Configuring flash size...
+
+Writing 'bootloader/bootloader.bin' at 0x00000000...
+SHA digest in image updated.
+Flash will be erased from 0x00000000 to 0x00005fff...
+Compressed 21056 bytes to 13532...
+Writing at 0x00005240 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100.0% 13.21kB/13.21kB [0s] 
+Wrote 21056 bytes (13532 compressed) at 0x00000000 in 0.2 seconds (696.1 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Writing 'partition_table/partition-table.bin' at 0x00008000...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Compressed 3072 bytes to 103...
+Writing at 0x00008c00 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100.0% 103B/103B [0s] 
+Wrote 3072 bytes (103 compressed) at 0x00008000 in 0.0 seconds (738.8 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Writing 'esp32-esp_mcp_4922.bin' at 0x00010000...
+Flash will be erased from 0x00010000 to 0x00055fff...
+Compressed 283344 bytes to 166314...
+Writing at 0x0001bf49 ━━╸                              9.9% 16.00kB/162.42kB [0s] 
+Writing at 0x0002389b ━━━━━╸                          19.7% 32.00kB/162.42kB [0s] 
+Writing at 0x0002909c ━━━━━━━━╸                       29.6% 48.00kB/162.42kB [0s] 
+Writing at 0x0002e5d0 ━━━━━━━━━━━╸                    39.4% 64.00kB/162.42kB [0s] 
+Writing at 0x0003413e ━━━━━━━━━━━━━━╸                 49.3% 80.00kB/162.42kB [0s] 
+Writing at 0x00039d27 ━━━━━━━━━━━━━━━━━╸              59.1% 96.00kB/162.42kB [1s] 
+Writing at 0x00043391 ━━━━━━━━━━━━━━━━━━━━╸           69.0% 112.00kB/162.42kB [1s] 
+Writing at 0x00048784 ━━━━━━━━━━━━━━━━━━━━━━━╸        78.8% 128.00kB/162.42kB [1s] 
+Writing at 0x0004e702 ━━━━━━━━━━━━━━━━━━━━━━━━━━╸     88.7% 144.00kB/162.42kB [1s] 
+Writing at 0x00053fff ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╸  98.5% 160.00kB/162.42kB [1s] 
+Writing at 0x000552d0 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100.0% 162.42kB/162.42kB [1s] 
+Wrote 283344 bytes (166314 compressed) at 0x00010000 in 1.8 seconds (1293.5 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Hard resetting via RTS pin...
+Done

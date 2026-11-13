@@ -41,3 +41,10 @@ void app_fir_init(void) {
   ESP_ERROR_CHECK(esp_fir_init(&fir_fase_t, &fir_model, fir_history_t,
                                APP_FIR_HISTORY_FLOATS));
 }
+
+float app_fir_dc_gain(void) {
+  float gain = fir_coefficients[APP_FIR_STORED_COEFFICIENTS - 1];
+  for (unsigned i = 0; i < APP_FIR_STORED_COEFFICIENTS - 1; ++i)
+    gain += 2.0f * fir_coefficients[i];
+  return gain;
+}

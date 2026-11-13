@@ -1,0 +1,20 @@
+{
+  "reference_current_A": 0.9,
+  "reference_method": "4.95 V / 5.5 ohm, calculated; direct current reading pending",
+  "offset_R_V": 1.578633,
+  "Rs_ohm": 1985,
+  "nominal_turns": 2000,
+  "firmware_Vref_V": 3.3,
+  "measured_Vref_V": 3.36,
+  "dac_neutral_measured_V": 1.68,
+  "Rs_neutral_measured_V": 0.0,
+  "Rs_active_snapshot_V": 0.88,
+  "Rs_snapshot_synchronized_with_last_window": false,
+  "logged_current_mean_A": 0.827649,
+  "logged_current_rms_A": 0.827665,
+  "current_mean_rescaled_to_3_36V_A": 0.8426971636363636,
+  "current_equivalent_from_Rs_A": 0.8866498740554156,
+  "turns_equivalent_from_Rs_if_reference_exact": 2030.1136363636363,
+  "filtered_residual_mean_mV": -0.426,
+  "limited_pct": 0.0
+}

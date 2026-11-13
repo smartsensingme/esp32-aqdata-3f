@@ -101,3 +101,26 @@ Engenheiro Eletricista com quase três décadas de experiência no ensino de gra
 ## 📄 Licença
 
 Este projeto está sob a licença MIT.
+
+## Calibração de offset na partida
+
+Os offsets ADC usam +1,65 V por fase como padrão. GPIO7 baixo na partida
+solicita calibração e persistência em NVS antes de iniciar a malha. Todos os
+DACs iniciam no ponto médio (2048). Veja o [procedimento de calibração](docs/offset-calibration.md)
+para ligação, condição de erro zero, configuração e tratamento de falhas.
+
+## Comissionamento do controlador
+
+A sintonia atual é provisória, somente R; veja `main/app_control.h`. A soma
+dos comandos pode usar toda a faixa do DAC.
+`TUNING_IS_ON=1` executa validação finita e termina com os DACs no neutro;
+não entra em controle contínuo. Veja [os modos e resultados](docs/controller-tuning.md).
+
+O controlador atual acrescenta um ramo integral `esp_pid` em paralelo ao PR.
+Veja [integração PR/PID e comissionamento](docs/pr-pid-integration.md) para o
+anti-windup coordenado da soma, estatísticas AC/DC, escala com Rs medido de
+1,985 kΩ e limitações da validação física.
+
+Os relatórios agora separam média, RMS total e RMS AC, inclusive em DC. O offset
+usa média aparada após FIR com ganho DC normalizado; não usa RMS como offset.
+Veja [RMS e calibração](docs/rms-and-offset.md).

@@ -14,3 +14,13 @@ CONFIG_RINGBUF_IN_IRAM=y
 
 # Otimiza o firmware para desempenho (-O2).
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Active-low offset calibration request at startup (internal pull-up).
+CONFIG_APP_OFFSET_CAL_GPIO=7
+
+# R-only commissioning, bounded actuation.
+CONFIG_APP_CONTROL_PHASE_MASK=1
+CONFIG_APP_CONTROL_LIMIT_MV=6000
+
+# Keep the portable shared-actuator calculation in internal instruction RAM.
+CONFIG_ESP_ANTI_WINDUP_IRAM=y

@@ -1,3 +1,6 @@
 [submodule "esp_pr"]
 	path = components/esp_pr
 	url = https://github.com/smartsensingme/esp_pr.git
+[submodule "components/esp_anti_windup"]
+	path = components/esp_anti_windup
+	url = https://github.com/smartsensingme/esp_anti_windup.git

@@ -1,0 +1,163 @@
+--- esp-idf-monitor 1.10.0 on /dev/cu.usbmodem831101 115200
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
+Executing action: monitor
+Running idf_monitor in directory /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f
+Executing "/Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python /Users/jalexdefranca/.espressif/v6.0/esp-idf/tools/idf_monitor.py -p /dev/cu.usbmodem831101 -b 115200 --toolchain-prefix xtensa-esp32s3-elf- --target esp32s3 --revision 0 /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/esp32-esp_mcp_4922.elf /Volumes/data2005/jalexdefranca/Coding/src/ESP-IDF/esp32-aqdata-3f/build/bootloader/bootloader.elf -m '/Users/jalexdefranca/.espressif/python_env/idf6.0_py3.12_env/bin/python' '/Users/jalexdefranca/.espressif/v6.0/esp-idf/tools/idf.py' '-p' '/dev/cu.usbmodem831101'"...
+I (122) esp_image: segment 3: paddr=0003d430 vaddr=3fc98250 sizeESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037cdd2
+--- 0x4037cdd2: esp_cpu_wait_for_intr at /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/esp_hw_support/cpu.c:64
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xda0
+--- 0x403c8700: _stext at ??:?
+load:0x403cb700,len:0x2f58
+entry 0x403c8908
+--- 0x403c8908: call_start_cpu0 at /Users/jalexdefranca/.espressif/v6.0/esp-idf/components/bootloader/subproject/main/bootloader_start.c:27
+I (24) boot: ESP-IDF v6.0 2nd stage bootloader
+I (24) boot: compile time Nov  8 2026 22:45:16
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (35) boot.esp32s3: SPI Mode       : DIO
+I (39) boot.esp32s3: SPI Flash Size : 2MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (56) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (62) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (69) boot:  2 factory          factory app      00 00 00010000 00100000
+I (75) boot: End of partition table
+I (79) esp_image: segment 0: paddr=00010020 vaddr=3c020020 size=0efa0h ( 61344) map
+I (97) esp_image: segment 1: paddr=0001efc8 vaddr=3fc97200 size=01050h (  4176) load
+I (98) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=1d408h (119816) map
+I (122) esp_image: segment 3: paddr=0003d430 vaddr=3fc98250 size=0496ch ( 18796) load
+I (127) esp_image: segment 4: paddr=00041da4 vaddr=40374000 size=13188h ( 78216) load
+I (144) esp_image: segment 5: paddr=00054f34 vaddr=50000000 size=00024h (    36) load
+I (153) boot: Loaded app from partition at offset 0x10000
+I (153) boot: Disabling RNG early entropy source...
+I (163) cpu_start: Multicore app
+I (172) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (172) cpu_start: Pro cpu start user code
+I (172) cpu_start: cpu freq: 160000000 Hz
+I (174) app_init: Application information:
+I (178) app_init: Project name:     esp32-esp_mcp_4922
+I (183) app_init: App version:      188f0ce-dirty
+I (187) app_init: Compile time:     Nov 11 2026 22:09:05
+I (192) app_init: ELF file SHA256:  ed1902299...
+I (196) app_init: ESP-IDF:          v6.0
+I (200) efuse_init: Min chip rev:     v0.0
+I (204) efuse_init: Max chip rev:     v0.99 
+I (208) efuse_init: Chip rev:         v0.2
+I (212) heap_init: Initializing. RAM available for dynamic allocation:
+I (218) heap_init: At 3FCA1A10 len 00047D00 (287 KiB): RAM
+I (223) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (228) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (233) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (239) spi_flash: detected chip: boya
+I (242) spi_flash: flash io: dio
+W (245) spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (258) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (264) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (271) main_task: Started on CPU0
+I (281) main_task: Calling app_main()
+I (281) main: Starting Digital Control Loop Architecture (ESP32-S3)
+I (281) main: Calibration scheme: Curve Fitting
+I (291) main: Pre-computing ADC Calibration LUT...
+I (311) main: Control gains: PR Kp=1 Kr60=14; PID Kp=0 Ki=0 Kd=0; phase mask=1; normal limit=2.000 Vsoft
+I (321) offsets: Loaded offsets from NVS
+I (381) offsets: Offsets R/S/T: 1.538703 / 0.354058 / 0.036351 V
+W (381) tuning: Finite R-only tuning: 8 s neutral + 60 s selected gains; discard first 2 s/stage; bounded output, no NVS writes
+W (381) tuning: CURRENT TEST: R only, PR Kp=1/Kr60=14 + PID Kp=0/Ki=0/Kd=0; 4 s neutral + 60 s closed loop; expected external |I|=0.549 A
+W (391) tuning: Total +/-2 Vsoft (~1.10 A), PR budget 10% / integral 90%; ADC protection 0.1..3.0 V; final 10 s statistics
+W (401) tuning: AC TEST: compare total RMS; PR budget 90% / integral 10%; 60 Hz
+W (411) tuning: Harmonic gains 60/120/180/300/420 Hz: 14 / 1 / 3 / 2 / 1
+I (421) main_task: Returned from app_main()
+I (421) main: Entering DMA Control Loop on Core 1
+I (431) main: ADC driver initialized on Core 1
+I (10431) main: ADC registers: src=80000000 Hz, CLKM=22 + 4/27 + 1, interval=40
+I (10431) main: ADC configurado: 43200.000 Hz por conversao, 14400.000 Hz por frame
+I (10431) control_diag: window=1 [log-affected] duration=5000062us attempts=71996 rate=14399.0/14400.0Hz processed=14399.0Hz deadline_overruns=0/71996 (0.0000%) exec_max=41us (boot=41us) deadline=70us wake=per-frame
+I (10451) control_diag: window=1 delta(total): generated=71996(71996) processed=71996(71996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (10471) control_diag: window=1 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/71996 (0 total) exec_max=6608 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (10481) control_diag: timing us: wake_max=11 valid=71996 missing=0 stamp_drops=0 ISR=66..72 outside=0 DAC_done=53..88 outside=3 band=62..77
+I (10501) control_diag: stage maxima cycles: ADC=3086 compute=3997 DAC=1357 publish=0 (previous publications) anomalies_dropped=0
+I (10511) control_diag: anomaly seq=2 t32_us=192548 pending=1 wake_us=11 ISR_us=66 DAC_us=53 stage_cycles=934/1160/1354
+I (10521) control_diag: anomaly seq=28801 t32_us=2192496 pending=1 wake_us=11 ISR_us=69 DAC_us=88 stage_cycles=954/3997/1355
+I (10531) control_diag: anomaly seq=28802 t32_us=2192553 pending=1 wake_us=11 ISR_us=72 DAC_us=57 stage_cycles=935/1593/1356
+I (10541) control_diag: window=2 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=1/72000 (0.0014%) exec_max=41us (boot=41us) deadline=70us wake=per-frame
+I (10561) control_diag: window=2 delta(total): generated=72000(143996) processed=72000(143996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (10571) control_diag: window=2 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=6516 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (10591) control_diag: timing us: wake_max=51 valid=72000 missing=0 stamp_drops=0 ISR=63..76 outside=0 DAC_done=34..121 outside=3 band=62..77
+I (10601) control_diag: stage maxima cycles: ADC=1175 compute=3714 DAC=1357 publish=11002 (previous publications) anomalies_dropped=0
+I (10611) control_diag: anomaly seq=71997 t32_us=5192258 pending=1 wake_us=51 ISR_us=69 DAC_us=121 stage_cycles=1175/3714/1346
+I (10621) control_diag: anomaly seq=71998 t32_us=5192292 pending=1 wake_us=26 ISR_us=70 DAC_us=34 stage_cycles=936/2139/1356
+I (10631) control_diag: anomaly seq=71999 t32_us=5192352 pending=1 wake_us=10 ISR_us=76 DAC_us=60 stage_cycles=935/2138/1357
+I (20431) control_diag: window=3 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=32us (boot=41us) deadline=70us wake=per-frame
+I (20441) control_diag: window=3 delta(total): generated=72000(215996) processed=72000(215996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (20451) control_diag: window=3 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=5107 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (20471) control_diag: timing us: wake_max=13 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=66..73 outside=0 band=62..77
+I (20481) control_diag: stage maxima cycles: ADC=1316 compute=2237 DAC=1416 publish=3058 (previous publications) anomalies_dropped=0
+I (20491) control_diag: window=4 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=30us (boot=41us) deadline=70us wake=per-frame
+I (20511) control_diag: window=4 delta(total): generated=72000(287996) processed=72000(287996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (20521) control_diag: window=4 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=4979 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (20541) control_diag: timing us: wake_max=11 valid=72000 missing=0 stamp_drops=0 ISR=69..70 outside=0 DAC_done=68..71 outside=0 band=62..77
+I (20551) control_diag: stage maxima cycles: ADC=954 compute=2455 DAC=1357 publish=3469 (previous publications) anomalies_dropped=0
+I (30431) control_diag: window=5 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=31us (boot=41us) deadline=70us wake=per-frame
+I (30441) control_diag: window=5 delta(total): generated=72000(359996) processed=72000(359996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (30451) control_diag: window=5 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=5083 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (30471) control_diag: timing us: wake_max=13 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=66..73 outside=0 band=62..77
+I (30481) control_diag: stage maxima cycles: ADC=1290 compute=2237 DAC=1416 publish=3058 (previous publications) anomalies_dropped=0
+I (30491) control_diag: window=6 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=31us (boot=41us) deadline=70us wake=per-frame
+I (30511) control_diag: window=6 delta(total): generated=72000(431996) processed=72000(431996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (30521) control_diag: window=6 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=4998 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (30541) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..76 outside=0 band=62..77
+I (30551) control_diag: stage maxima cycles: ADC=972 compute=2448 DAC=1357 publish=3329 (previous publications) anomalies_dropped=0
+I (40431) control_diag: window=7 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=32us (boot=41us) deadline=70us wake=per-frame
+I (40441) control_diag: window=7 delta(total): generated=72000(503996) processed=72000(503996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (40451) control_diag: window=7 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=5095 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (40471) control_diag: timing us: wake_max=13 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=65..73 outside=0 band=62..77
+I (40481) control_diag: stage maxima cycles: ADC=1284 compute=2237 DAC=1416 publish=3058 (previous publications) anomalies_dropped=0
+I (40491) control_diag: window=8 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=31us (boot=41us) deadline=70us wake=per-frame
+I (40511) control_diag: window=8 delta(total): generated=72000(575996) processed=72000(575996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (40521) control_diag: window=8 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=4998 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (40541) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..76 outside=0 band=62..77
+I (40551) control_diag: stage maxima cycles: ADC=972 compute=2448 DAC=1357 publish=3329 (previous publications) anomalies_dropped=0
+I (50431) control_diag: window=9 [log-affected] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=31us (boot=41us) deadline=70us wake=per-frame
+I (50441) control_diag: window=9 delta(total): generated=72000(647996) processed=72000(647996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (50451) control_diag: window=9 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=5083 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (50471) control_diag: timing us: wake_max=13 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=66..73 outside=0 band=62..77
+I (50481) control_diag: stage maxima cycles: ADC=1290 compute=2241 DAC=1416 publish=3058 (previous publications) anomalies_dropped=0
+I (50491) control_diag: window=10 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=31us (boot=41us) deadline=70us wake=per-frame
+I (50511) control_diag: window=10 delta(total): generated=72000(719996) processed=72000(719996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (50521) control_diag: window=10 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=4998 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (50541) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=63..76 outside=0 band=62..77
+I (50551) control_diag: stage maxima cycles: ADC=972 compute=2448 DAC=1357 publish=3329 (previous publications) anomalies_dropped=0
+I (60431) control_diag: window=11 [log-affected] duration=5000003us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=32us (boot=41us) deadline=70us wake=per-frame
+I (60441) control_diag: window=11 delta(total): generated=72000(791996) processed=72000(791996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (60451) control_diag: window=11 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=5125 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (60471) control_diag: timing us: wake_max=12 valid=72000 missing=0 stamp_drops=0 ISR=66..73 outside=0 DAC_done=66..73 outside=0 band=62..77
+I (60481) control_diag: stage maxima cycles: ADC=1293 compute=2571 DAC=1416 publish=3058 (previous publications) anomalies_dropped=0
+I (60491) control_diag: window=12 [quiet] duration=5000000us attempts=72000 rate=14400.0/14400.0Hz processed=14400.0Hz deadline_overruns=0/72000 (0.0000%) exec_max=34us (boot=41us) deadline=70us wake=per-frame
+I (60511) control_diag: window=12 delta(total): generated=72000(863996) processed=72000(863996) backlog=0(0) queued_iterations=0 max_pending=1(boot=1)
+I (60521) control_diag: window=12 delta(total): read_errors=0(0) partial_reads=0(0) pool_lost=0(0) cycle_overruns=0/72000 (0 total) exec_max=5468 cycles(boot=6608) budget=11111 cycles report_errors=0
+I (60541) control_diag: timing us: wake_max=11 valid=72000 missing=0 stamp_drops=0 ISR=69..70 outside=0 DAC_done=67..71 outside=0 band=62..77
+I (60551) control_diag: stage maxima cycles: ADC=970 compute=2920 DAC=1357 publish=4966 (previous publications) anomalies_dropped=0
+I (64431) tuning: TUNING STOPPED: completed all stages; DAC neutral, control stopped
+I (64431) tuning: Last raw_error=-0.192703 filtered_error=-0.143797 V backlog=1 (ADC voltage=raw_error+loaded offset)
+I (64441) tuning: ADC: media=1.355146 RMS=1.374594 V; ruido_RMS=230.407 mV; erro_filtrado_RMS=296.809 mV
+I (64451) tuning: AC stage=0 n=28800 Icomp_mean=+0.000000 Icomp_rms=0.000000 A; residual_mean=-185.284 residual_ac=231.874 mV; command_peak=0.0000 Vsoft; limited=0.000%
+I (64461) tuning: AC branch limits: PR 0.000% / PID 0.000% of useful samples
+I (64471) tuning: AC residual: total_RMS=296.809 mV; fundamental60_RMS=206.120 mV
+I (64481) tuning: AC residual nominal even harmonics: 120=101.931 240=7.439 360=1.899 mV RMS
+I (64481) tuning: AC residual nominal harmonics: 180=23.453 300=0.941 420=3.230 mV RMS
+I (64491) tuning: ADC: media=1.382525 RMS=1.388737 V; ruido_RMS=131.202 mV; erro_filtrado_RMS=205.057 mV
+I (64501) tuning: AC stage=1 n=144000 Icomp_mean=-0.089101 Icomp_rms=0.575567 A; residual_mean=-157.674 residual_ac=131.100 mV; command_peak=1.8000 Vsoft; limited=0.000%
+I (64521) tuning: AC branch limits: PR 4.012% / PID 0.000% of useful samples
+I (64521) tuning: AC residual: total_RMS=205.057 mV; fundamental60_RMS=59.611 mV
+I (64531) tuning: AC residual nominal even harmonics: 120=79.336 240=1.250 360=0.482 mV RMS
+I (64541) tuning: AC residual nominal harmonics: 180=11.745 300=0.141 420=1.041 mV RMS
+I (64541) tuning: Reference comparison (external current 0.549 A): 4.84% magnitude difference; residual check=no. Estimate depends on Rs, references, turns and zero calibration

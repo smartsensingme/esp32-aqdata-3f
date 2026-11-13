@@ -110,3 +110,25 @@ The initial anti-windup tracking time is 10 ms, configurable under
 **Application control** in menuconfig; zero disables it. Physical-plant
 tuning and control-loop timing with anti-windup still require bench validation.
 See [component documentation](components/esp_pr/README.md).
+
+## Startup offset calibration
+
+ADC offsets default to +1.65 V per phase. An active-low GPIO7 at startup
+requests calibration and NVS persistence before the control loop starts. All
+DAC channels start at midpoint (2048). See the [calibration procedure](docs/offset-calibration.md)
+for wiring, zero-error conditions, configuration and failure handling.
+
+## Controller commissioning
+
+The current R-only gains are provisional; see `main/app_control.h`. The
+combined command can use the full DAC range. `TUNING_IS_ON=1` runs a finite validation and then holds the DACs at
+midpoint; it does not enter continuous control. See [commissioning modes and results](docs/controller-tuning.md).
+
+The current controller adds an I-only `esp_pid` branch in parallel with the PR.
+See [PR/PID integration and commissioning](docs/pr-pid-integration.md) for
+coordinated anti-windup of the summed command, AC/DC statistics, measured
+1.985 kΩ current scale and remaining hardware-validation limits.
+
+Reports now separate mean, total RMS and AC RMS, including DC signals. Offset
+calibration uses a trimmed mean after DC-normalized FIR, not total RMS.
+See [RMS and offset calibration](docs/rms-and-offset.md).

@@ -1,6 +1,9 @@
 #include "app_control.h"
 #include "app_diagnostics.h"
 #include "app_fir.h"
+#include "app_offsets.h"
+#include "app_polarity.h"
+#include "app_tuning.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_continuous.h"
@@ -14,6 +17,8 @@
 #include "soc/clk_tree_defs.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include "esp_heap_caps.h"
 
 #include "app_mqtt.h"
 
@@ -38,6 +43,11 @@ static bool do_calibration = false;
 // Calibration Lookup Table (16KB) to bypass FreeRTOS mutexes during 14.4kHz
 // loop
 static float adc_cali_lut[4096];
+// Initialized once before starting DMA; read only by the control task.
+static float phase_offsets[3];
+static float inverse_fir_dc_gain;
+// Calibration owner and ADC ISR are both on Core 1.
+static volatile bool offset_dma_active, offset_dma_overflow;
 
 // 14.4 kHz per phase gives exactly 240 samples per 60 Hz cycle. With the
 // R/S/T pattern, the ADC must perform 43.2 k conversions per second.
@@ -46,10 +56,41 @@ static float adc_cali_lut[4096];
 #define ADC_TARGET_CONVERSION_FREQ_HZ                                          \
   ((uint32_t)(ADC_TARGET_FRAME_FREQ_HZ * ADC_CONVERSIONS_PER_FRAME))
 
-// Se a malha de controle estiver fechada, faça TEST_IS_ON = 0
-#define TEST_IS_ON 1
+// Temporary polarity check takes precedence over TEST_IS_ON and offset calibration.
+#define CALIB_IS_ON 0
+// Finite, bounded R-only commissioning; never enters normal control afterward.
+#define TUNING_IS_ON 1
+// Finite DC PR+I test; leave normal command limit unchanged.
+#define TUNING_DC_TEST 1
+#define TUNING_AC_TEST 1
+// Diagnostic only: neutral latch once, then no SPI traffic during sampling.
+#define ADC_QUIET_SPI 0
+#define ADC_USE_IDF_TIMING 0
+#define TUNING_HOLD_NEUTRAL 0 // 0=control, 1=measure zero, 2=save zero with GPIO7 low
+// External primary current reference for reporting only; not a setpoint.
+#define TUNING_DC_REFERENCE_A 0.541f
+#define CALIB_DAC_STEP_CODES 128U
 
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0 && !TEST_IS_ON
+#if CALIB_IS_ON != 0 && CALIB_IS_ON != 1
+#error "CALIB_IS_ON must be either 0 or 1"
+#endif
+
+_Static_assert(CALIB_DAC_STEP_CODES > 0 &&
+                   CALIB_DAC_STEP_CODES <= DAC_MAX_CODE - DAC_NEUTRAL_CODE,
+               "Polarity step must fit above the DAC midpoint");
+
+// Se a malha de controle estiver fechada, faça TEST_IS_ON = 0
+#define TEST_IS_ON 0
+
+#if (ADC_QUIET_SPI || ADC_USE_IDF_TIMING) && (!TUNING_IS_ON || TUNING_HOLD_NEUTRAL != 1 || TEST_IS_ON)
+#error "Quiet SPI requires the read-only neutral diagnostic"
+#endif
+
+#if TUNING_IS_ON && (CALIB_IS_ON || TEST_IS_ON || CONFIG_APP_DIAG_CAPTURE_SECONDS > 0)
+#error "Tuning requires CALIB_IS_ON=0, TEST_IS_ON=0 and continuous diagnostics"
+#endif
+
+#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0 && !TEST_IS_ON && !CALIB_IS_ON
 #error "Finite capture must only be used with the open-loop DAC demo"
 #endif
 
@@ -138,6 +179,9 @@ static bool adc_get_configured_conversion_freq(float *out_freq_hz) {
  * programs the controller registers from its high-level configuration.
  */
 static void adc_apply_target_frame_rate(void) {
+#if ADC_USE_IDF_TIMING
+  return; // Read-only diagnosis: leave the clock/trigger selected by ESP-IDF.
+#endif
   APB_SARADC.apb_adc_clkm_conf.clk_sel = 2; // ADC_DIGI_CLK_SRC_APB
   APB_SARADC.apb_adc_clkm_conf.clkm_div_num = 22;
   APB_SARADC.apb_adc_clkm_conf.clkm_div_b = 27;
@@ -185,7 +229,7 @@ static bool IRAM_ATTR adc_on_conv_done(adc_continuous_handle_t handle,
                                        const adc_continuous_evt_data_t *edata,
                                        void *user_data) {
   BaseType_t high_task_awoken = pdFALSE;
-  app_diagnostics_frame_generated();
+  if (!offset_dma_active) app_diagnostics_frame_generated();
   // Sempre que o hardware fecha 1 Frame de 3 leituras, ele dispara
   // automaticamente a interrupção adc_on_conv_done. Como 43.200 / 3 = 14.400,
   // essa interrupção é chamada cravada a 14.4 kHz. O único trabalho dela é dar
@@ -200,7 +244,8 @@ adc_on_pool_overflow(adc_continuous_handle_t handle,
   (void)handle;
   (void)edata;
   (void)user_data;
-  app_diagnostics_pool_overflow();
+  if (offset_dma_active) offset_dma_overflow = true;
+  else app_diagnostics_pool_overflow();
   return false;
 }
 
@@ -305,6 +350,95 @@ static void init_adc_continuous(void) {
 #endif
 }
 
+/* Startup calibration uses the same DMA pattern, Core 1 frame notifications,
+ * LUT, FOH/FIR/controller workload and neutral SPI writes as operation. ADC is
+ * stopped before sorting/NVS writes. No calibration code runs in the ISR. */
+static esp_err_t calibrate_offsets_dma(void) {
+  float (*samples)[APP_OFFSET_SAMPLE_COUNT] = heap_caps_malloc(3 * APP_OFFSET_SAMPLE_COUNT * sizeof(float), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  if (!samples) return ESP_ERR_NO_MEM;
+  uint16_t neutral[4] = {DAC_NEUTRAL_CODE, DAC_NEUTRAL_CODE, DAC_NEUTRAL_CODE, DAC_NEUTRAL_CODE};
+  const unsigned discard_frames = 144000U; // 10 s at operating workload before zero capture
+  float previous_r = 0, previous_t = 0;
+  bool dac_failed = false;
+  offset_dma_overflow = false;
+  offset_dma_active = true;
+  ESP_LOGW(TAG, "Calibrating offsets with operating DMA path: 10 s settle + 100 ms samples; mask=%u", CONFIG_APP_CONTROL_PHASE_MASK);
+  esp_err_t result = adc_continuous_start(adc_handle);
+  if (result != ESP_OK) {
+    offset_dma_active = false;
+    free(samples);
+    return result;
+  }
+  adc_apply_target_frame_rate();
+  for (unsigned frame = 0; frame < discard_frames + APP_OFFSET_SAMPLE_COUNT; ++frame) {
+    const unsigned pending = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(100));
+    if (pending == 0 || pending > 4 || offset_dma_overflow) {
+      result = ESP_ERR_INVALID_RESPONSE;
+      break;
+    }
+    uint8_t buffer[12];
+    uint32_t collected = 0;
+    while (collected < sizeof(buffer)) {
+      uint32_t got = 0;
+      result = adc_continuous_read(adc_handle, buffer + collected,
+                                   sizeof(buffer) - collected, &got, 0);
+      if (result != ESP_OK || got == 0 || got > sizeof(buffer) - collected) {
+        result = ESP_ERR_INVALID_RESPONSE;
+        break;
+      }
+      collected += got;
+    }
+    if (result != ESP_OK) break;
+    float volts[3] = {0};
+    unsigned seen = 0;
+    for (unsigned i = 0; i < sizeof(buffer); i += SOC_ADC_DIGI_RESULT_BYTES) {
+      const adc_digi_output_data_t *sample = (const adc_digi_output_data_t *)&buffer[i];
+      const unsigned ch = sample->type2.channel;
+      const unsigned raw = sample->type2.data;
+      if (ch < ADC_CHAN_R || ch > ADC_CHAN_T || (seen & (1U << (ch - ADC_CHAN_R)))) {
+        result = ESP_ERR_INVALID_RESPONSE;
+        break;
+      }
+      const unsigned phase = ch - ADC_CHAN_R;
+      seen |= 1U << phase;
+      volts[phase] = adc_cali_lut[raw];
+      if ((CONFIG_APP_CONTROL_PHASE_MASK & (1U << phase)) && (raw == 0 || raw == 4095)) {
+        result = ESP_ERR_INVALID_RESPONSE;
+        break;
+      }
+    }
+    if (result != ESP_OK || seen != 7) { result = ESP_ERR_INVALID_RESPONSE; break; }
+
+    const float r = volts[0] - phase_offsets[0], s = volts[1] - phase_offsets[1], t = volts[2] - phase_offsets[2];
+    const float aligned[3] = {r + (r - previous_r) / 3.0f, s, t - (t - previous_t) / 3.0f};
+    previous_r = r; previous_t = t;
+    esp_fir_t *firs[3] = {&fir_fase_r, &fir_fase_s, &fir_fase_t};
+    app_parallel_t *controllers[3] = {&pr_fase_r, &pr_fase_s, &pr_fase_t};
+    for (unsigned phase = 0; phase < 3; ++phase) {
+      const float filtered = esp_fir_process_symmetric(firs[phase], aligned[phase]);
+      if (frame >= discard_frames)
+        samples[phase][frame - discard_frames] = phase_offsets[phase] + filtered * inverse_fir_dc_gain;
+      if (CONFIG_APP_CONTROL_PHASE_MASK & (1U << phase))
+        (void)app_control_process_phase(controllers[phase], filtered);
+    }
+    // Computation above maintains the normal workload; its output is discarded.
+    result = mcp4922_ll_write_channels(&dac_ctx, neutral);
+    if (result != ESP_OK) { dac_failed = true; break; }
+  }
+  const esp_err_t stop = adc_continuous_stop(adc_handle);
+  offset_dma_active = false;
+  if (result == ESP_OK) result = stop;
+  (void)ulTaskNotifyTake(pdTRUE, 0);
+  if (result == ESP_OK) result = adc_continuous_flush_pool(adc_handle);
+  if (result == ESP_OK && offset_dma_overflow) result = ESP_ERR_INVALID_RESPONSE;
+  if (result == ESP_OK)
+    result = app_offsets_commit_samples(samples, CONFIG_APP_CONTROL_PHASE_MASK, phase_offsets);
+  free(samples);
+  if (dac_failed) ESP_LOGE(TAG, "Calibration DAC fault; context retained, reset required");
+  if (result == ESP_OK) { app_control_init(); app_fir_init(); }
+  return result;
+}
+
 static void IRAM_ATTR control_loop_task(void *arg) {
   ESP_LOGI(TAG, "Entering DMA Control Loop on Core %d", xPortGetCoreID());
   init_adc_continuous();
@@ -315,11 +449,22 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   // aqui e não o liberamos mais. Qualquer task extra vai ter que usar o
   // barramento SPI.
   ESP_ERROR_CHECK(spi_device_acquire_bus(dac_ctx.spi_handle, portMAX_DELAY));
-  uint16_t val[NUM_CHIPS * 2] = {0};
+  uint16_t val[NUM_CHIPS * 2];
+  for (unsigned i = 0; i < NUM_CHIPS * 2; ++i) {
+    val[i] = app_control_voltage_to_dac(0.0f);
+  }
 
   // Send a dummy transaction using the high-level API to properly configure the
   // SPI hardware
   ESP_ERROR_CHECK(mcp4922_write_channels(&dac_ctx, val));
+
+  if (app_offsets_calibration_requested() && !TUNING_IS_ON) {
+    const esp_err_t calibration = calibrate_offsets_dma();
+    if (calibration != ESP_OK) {
+      ESP_LOGE(TAG, "DMA calibration failed: %s; control stopped", esp_err_to_name(calibration));
+      vTaskSuspend(NULL);
+    }
+  }
 
   // Phase Skew Compensation variables (First-Order Hold)
   static float prev_err_r = 0.0f;
@@ -336,11 +481,21 @@ static void IRAM_ATTR control_loop_task(void *arg) {
    * exata ainda precisa ser aplicada logo depois dele. Nao deve haver logs ou
    * inicializacao adicional entre esse ponto e a espera pelo primeiro frame.
    */
+#if ADC_QUIET_SPI
+  ESP_LOGW(TAG, "QUIET SPI ADC DIAGNOSTIC: all DACs latched at 2048; no SPI writes during acquisition");
+#endif
+#if ADC_USE_IDF_TIMING
+  ESP_LOGW(TAG, "ADC DRIVER TIMING DIAGNOSTIC: no manual clock/trigger overrides; frequency may differ from 14.4 kHz");
+#endif
   app_diagnostics_start();
   ESP_ERROR_CHECK(adc_continuous_start(adc_handle));
   adc_apply_target_frame_rate();
 
-  while (!app_diagnostics_capture_done()) {
+  while (!app_diagnostics_capture_done()
+#if TUNING_IS_ON
+         && !app_tuning_done()
+#endif
+  ) {
     /*
      * Consume somente um evento. Se mais frames chegaram enquanto a task
      * estava ocupada, o contador permanece positivo e a proxima iteracao
@@ -389,6 +544,9 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     }
 
     if (read_failed) {
+#if TUNING_IS_ON
+      app_tuning_abort();
+#endif
       app_diagnostics_event(APP_DIAG_READ_ERRORS);
       app_diagnostics_cycle_end(false);
       continue;
@@ -422,9 +580,9 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     // Use the pre-computed Calibration LUT to bypass slow mutexes
     // A conversão de RAW para tensão já foi feita na inicialização do ADC.
     // Agora só precisamos usar o valor convertido para indexar a tabela.
-    float err_r = adc_cali_lut[raw_r] - OFFSET_R;
-    float err_s = adc_cali_lut[raw_s] - OFFSET_S;
-    float err_t = adc_cali_lut[raw_t] - OFFSET_T;
+    float err_r = adc_cali_lut[raw_r] - phase_offsets[0];
+    float err_s = adc_cali_lut[raw_s] - phase_offsets[1];
+    float err_t = adc_cali_lut[raw_t] - phase_offsets[2];
 
     // --- Phase Skew Compensation via First-Order Hold ---
     // A fase S (do meio) é a nossa referência de tempo.
@@ -450,18 +608,29 @@ static void IRAM_ATTR control_loop_task(void *arg) {
 
     // 5. esp_pr: estados independentes por fase, saturacao e anti-windup.
     // app_control_process_phase chama esp_pr_update e trata falhas numericas.
+#if TUNING_IS_ON
+    float control_action_r = app_tuning_step(err_r, err_r_filtered, pending_frames);
+    float control_action_s = 0.0f;
+    float control_action_t = 0.0f;
+    (void)err_s_filtered;
+    (void)err_t_filtered;
+#else
     float control_action_r =
-        app_control_process_phase(&pr_fase_r, err_r_filtered);
+        (CONFIG_APP_CONTROL_PHASE_MASK & 1) ?
+            app_control_process_phase(&pr_fase_r, err_r_filtered) : 0.0f;
     float control_action_s =
-        app_control_process_phase(&pr_fase_s, err_s_filtered);
+        (CONFIG_APP_CONTROL_PHASE_MASK & 2) ?
+            app_control_process_phase(&pr_fase_s, err_s_filtered) : 0.0f;
     float control_action_t =
-        app_control_process_phase(&pr_fase_t, err_t_filtered);
+        (CONFIG_APP_CONTROL_PHASE_MASK & 4) ?
+            app_control_process_phase(&pr_fase_t, err_t_filtered) : 0.0f;
+#endif
 
     // 6. Map [-6 V, +6 V] to the unsigned 12-bit DAC range.
     val[0] = app_control_voltage_to_dac(control_action_r);
     val[1] = app_control_voltage_to_dac(control_action_s);
     val[2] = app_control_voltage_to_dac(control_action_t);
-    val[3] = 0;
+    val[3] = DAC_NEUTRAL_CODE;
 
     app_diagnostics_stage_end(APP_DIAG_COMPUTE);
 
@@ -480,7 +649,7 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     test_val[0] = test_sine_lut[test_sine_index];
     test_val[1] = test_sine_lut[test_s_index];
     test_val[2] = test_sine_lut[test_t_index];
-    test_val[3] = 0;
+    test_val[3] = DAC_NEUTRAL_CODE;
     esp_err_t dac_result = mcp4922_ll_write_channels(&dac_ctx, test_val);
 
     test_sine_index++;
@@ -488,7 +657,12 @@ static void IRAM_ATTR control_loop_task(void *arg) {
       test_sine_index = 0;
     }
 #else
+#if ADC_QUIET_SPI
+    // Startup already latched midpoint. No actuator updates in this diagnostic.
+    esp_err_t dac_result = ESP_OK;
+#else
     esp_err_t dac_result = mcp4922_ll_write_channels(&dac_ctx, val);
+#endif
 #endif
 
     if (dac_result != ESP_OK) {
@@ -502,11 +676,16 @@ static void IRAM_ATTR control_loop_task(void *arg) {
     }
     app_diagnostics_stage_end(APP_DIAG_DAC);
 
-#if !CONFIG_APP_DIAG_DISABLE_RMS
+#if !CONFIG_APP_DIAG_DISABLE_RMS && (!TUNING_IS_ON || TUNING_HOLD_NEUTRAL == 1)
     // Telemetry always records the controller outputs, even in test mode.
     /* Publish READY atomically; the Core 0 worker polls without a kernel
      * notification from this timing-sensitive path. */
-    (void)app_control_store_telemetry(val[0], val[1], val[2]);
+    const float adc_volts[3] = {adc_cali_lut[raw_r], adc_cali_lut[raw_s], adc_cali_lut[raw_t]};
+    const float filtered_volts[3] = {
+        phase_offsets[0] + err_r_filtered * inverse_fir_dc_gain,
+        phase_offsets[1] + err_s_filtered * inverse_fir_dc_gain,
+        phase_offsets[2] + err_t_filtered * inverse_fir_dc_gain};
+    (void)app_control_store_sample(val, adc_volts, filtered_volts);
 #endif
 
     app_diagnostics_cycle_end(true);
@@ -515,6 +694,19 @@ static void IRAM_ATTR control_loop_task(void *arg) {
   /* Finite capture ends the continuous operating phase. No writes remain
    * outstanding after the synchronous LL DAC call. Preserve the last code. */
   ESP_ERROR_CHECK(adc_continuous_stop(adc_handle));
+#if TUNING_IS_ON
+  for (unsigned i = 0; i < NUM_CHIPS * 2; ++i) val[i] = DAC_NEUTRAL_CODE;
+  ESP_ERROR_CHECK(mcp4922_ll_write_channels(&dac_ctx, val));
+#if TUNING_HOLD_NEUTRAL == 2
+  if (app_offsets_calibration_requested()) {
+    float measured[3] = {phase_offsets[0], phase_offsets[1], phase_offsets[2]};
+    if (app_tuning_zero_offset(inverse_fir_dc_gain, &measured[0])) {
+      ESP_ERROR_CHECK(app_offsets_commit_values(measured, 1, phase_offsets));
+    } else ESP_LOGE(TAG, "Zero run incomplete/unstable: NVS left unchanged");
+  }
+#endif
+  app_tuning_report();
+#endif
   spi_device_release_bus(dac_ctx.spi_handle);
   app_diagnostics_capture_finish();
   vTaskDelete(NULL);
@@ -531,7 +723,7 @@ static void report_adc_rate(void) {
   }
 }
 
-#if !CONFIG_APP_DIAG_DISABLE_RMS
+#if !CONFIG_APP_DIAG_DISABLE_RMS && (!TUNING_IS_ON || TUNING_HOLD_NEUTRAL == 1)
 static void rms_calc_task(void *arg) {
   while (1) {
     vTaskDelay(pdMS_TO_TICKS(4000));
@@ -560,18 +752,6 @@ static void rms_calc_task(void *arg) {
 void app_main(void) {
   ESP_LOGI(TAG, "Starting Digital Control Loop Architecture (ESP32-S3)");
 
-#if RUN_WITH_WIFI
-  app_mqtt_init();
-#endif
-
-  app_control_init();
-  app_fir_init();
-#if TEST_IS_ON
-  test_sine_lut_init();
-  ESP_LOGW(TAG,
-           "DAC test mode enabled: outputting three-phase 60 Hz sine waves");
-#endif
-
   // Configure MCP4922
   gpio_num_t cs_pins[NUM_CHIPS] = {CONFIG_MCP4922_CS1_PIN,
                                    CONFIG_MCP4922_CS2_PIN};
@@ -590,6 +770,13 @@ void app_main(void) {
     ESP_LOGE(TAG, "Failed to initialize MCP4922");
     return;
   }
+
+  // Hold every output at bipolar zero throughout startup and calibration.
+  uint16_t startup_values[NUM_CHIPS * 2];
+  for (unsigned i = 0; i < NUM_CHIPS * 2; ++i) {
+    startup_values[i] = app_control_voltage_to_dac(0.0f);
+  }
+  ESP_ERROR_CHECK(mcp4922_write_channels(&dac_ctx, startup_values));
 
   // Lê os dados de calibração na flash, se houver. Caso contrário, devolve
   // false e usa a calibração padrão. (A calibração padrão é usada apenas em
@@ -610,8 +797,54 @@ void app_main(void) {
     adc_cali_lut[i] = mv / 1000.0f; // Armazena diretamente em Volts
   }
 
+#if CALIB_IS_ON
+  app_polarity_run(&dac_ctx, adc_cali_lut, CALIB_DAC_STEP_CODES);
+  return;
+#endif
+
+#if RUN_WITH_WIFI && !TUNING_IS_ON
+  app_mqtt_init();
+#endif
+
+  app_control_init();
+  ESP_LOGI(TAG, "Control gains: PR Kp=%.3g Kr60=%.3g; PID Kp=0 Ki=%.3g Kd=0; phase mask=%u; normal limit=%.3f Vsoft",
+           (double)APP_CONTROL_KP, (double)APP_CONTROL_KR60,
+           (double)APP_CONTROL_KI, (unsigned)CONFIG_APP_CONTROL_PHASE_MASK,
+           (double)(CONFIG_APP_CONTROL_LIMIT_MV / 1000.0f));
+  app_fir_init();
+  inverse_fir_dc_gain = 1.0f / app_fir_dc_gain();
+#if TEST_IS_ON
+  test_sine_lut_init();
+  ESP_LOGW(TAG,
+           "DAC test mode enabled: outputting three-phase 60 Hz sine waves");
+#endif
+
+  // All flash access and temporary oneshot ownership end before DMA starts.
+#if TUNING_IS_ON
+#if TUNING_HOLD_NEUTRAL == 2
+  ESP_ERROR_CHECK(app_offsets_init(adc_cali_lut, phase_offsets));
+#else
+  ESP_ERROR_CHECK(app_offsets_load(adc_cali_lut, phase_offsets));
+#endif
+#if TUNING_DC_TEST
+#if TUNING_HOLD_NEUTRAL
+  app_tuning_init_neutral(phase_offsets[0], TUNING_DC_REFERENCE_A);
+#else
+#if TUNING_AC_TEST
+  app_tuning_init_ac(phase_offsets[0], TUNING_DC_REFERENCE_A);
+#else
+  app_tuning_init_dc(phase_offsets[0], TUNING_DC_REFERENCE_A);
+#endif
+#endif
+#else
+  app_tuning_init(true);
+#endif
+#else
+  ESP_ERROR_CHECK(app_offsets_init(adc_cali_lut, phase_offsets));
+#endif
+
   // Create Tasks
-#if !CONFIG_APP_DIAG_DISABLE_RMS
+#if !CONFIG_APP_DIAG_DISABLE_RMS && (!TUNING_IS_ON || TUNING_HOLD_NEUTRAL == 1)
   xTaskCreatePinnedToCore(rms_calc_task, "rms_calc", 8192, NULL, 5,
                           NULL, 0); // Core 0
 #endif

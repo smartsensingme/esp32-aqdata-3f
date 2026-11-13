@@ -8,3 +8,6 @@ extern esp_fir_t fir_fase_t;
 
 /* Prepare one immutable coefficient model and three independent histories. */
 void app_fir_init(void);
+
+// Startup query: gain is the sum of all expanded FIR coefficients.
+float app_fir_dc_gain(void);

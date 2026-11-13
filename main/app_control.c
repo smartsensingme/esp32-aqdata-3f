@@ -1,4 +1,5 @@
 #include "app_control.h"
+#include "app_signal_stats.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include <math.h>
@@ -8,7 +9,7 @@
 static const char *TAG = "app_control";
 #endif
 
-esp_pr_t pr_fase_r, pr_fase_s, pr_fase_t;
+DRAM_ATTR app_parallel_t pr_fase_r, pr_fase_s, pr_fase_t;
 
 // Coeficientes compartilhados em RAM interna; estados separados por fase.
 static DRAM_ATTR esp_pr_model_t pr_model;
@@ -23,36 +24,52 @@ _Static_assert(__atomic_always_lock_free(sizeof(uint32_t), 0),
 static uint16_t dac_history_r[RMS_BUFFER_SIZE];
 static uint16_t dac_history_s[RMS_BUFFER_SIZE];
 static uint16_t dac_history_t[RMS_BUFFER_SIZE];
+static float adc_history[3][RMS_BUFFER_SIZE];
+static float filtered_history[3][RMS_BUFFER_SIZE];
+static bool signal_capture_valid;
 
 void app_control_init(void) {
-  // Sintonia original do projeto, com Tustin prewarped por frequencia.
-  const unsigned orders[] = {1, 3, 5, 7};
-  const float gains[] = {60000.0f, 6000.0f, 10000.0f, 13000.0f};
-  const float damping[] = {5.0f, 5.0f, 5.0f, 5.0f};
+  app_control_init_with_limit(CONFIG_APP_CONTROL_LIMIT_MV / 1000.0f);
+}
+
+void app_control_init_with_limit(float limit) {
+  ESP_ERROR_CHECK(isfinite(limit) && limit > 0.0f &&
+                          limit <= CONTROL_OUTPUT_MAX_V
+                      ? ESP_OK : ESP_ERR_INVALID_ARG);
+  // Sintonia provisoria de comissionamento, com Tustin prewarped.
+  const unsigned orders[] = {1, 2, 3, 5, 7};
+  const float gains[] = {APP_CONTROL_KR60, APP_CONTROL_KR120, APP_CONTROL_KR180,
+                         APP_CONTROL_KR300, APP_CONTROL_KR420};
+  const float damping[] = {5.0f, 5.0f, 5.0f, 5.0f, 5.0f};
   enum { RESONATOR_COUNT = sizeof(orders) / sizeof(orders[0]) };
   esp_pr_resonator_config_t branches[RESONATOR_COUNT];
   ESP_ERROR_CHECK(esp_pr_make_harmonics(branches, RESONATOR_COUNT, 60.0f,
                                         orders, gains, damping));
   const esp_pr_config_t config = {
       .sample_rate_hz = 14400.0f,
-      .kp = 5.0f,
-      .output_min = CONTROL_OUTPUT_MIN_V,
-      .output_max = CONTROL_OUTPUT_MAX_V,
-      .anti_windup_tracking_time_s = CONFIG_APP_PR_TRACKING_TIME_US * 1e-6f,
+      .kp = APP_CONTROL_KP,
+      .output_min = -limit,
+      .output_max = limit,
+      .anti_windup_tracking_time_s = CONFIG_APP_PR_TRACKING_TIME_US / 1000000.0f,
+      .tracking_mode = ESP_PR_TRACKING_EXTERNAL,
       .resonators = branches,
       .resonator_count = RESONATOR_COUNT,
   };
   ESP_ERROR_CHECK(esp_pr_prepare(&pr_model, &config));
-  ESP_ERROR_CHECK(esp_pr_init(&pr_fase_r, &pr_model));
-  ESP_ERROR_CHECK(esp_pr_init(&pr_fase_s, &pr_model));
-  ESP_ERROR_CHECK(esp_pr_init(&pr_fase_t, &pr_model));
+  ESP_ERROR_CHECK(
+      app_parallel_init(&pr_fase_r, &pr_model, APP_CONTROL_KI, limit));
+  ESP_ERROR_CHECK(
+      app_parallel_init(&pr_fase_s, &pr_model, APP_CONTROL_KI, limit));
+  ESP_ERROR_CHECK(
+      app_parallel_init(&pr_fase_t, &pr_model, APP_CONTROL_KI, limit));
 }
 
-float IRAM_ATTR app_control_process_phase(esp_pr_t *controller, float error) {
+float IRAM_ATTR app_control_process_phase(app_parallel_t *controller,
+                                          float error) {
   float output = 0.0f;
-  if (esp_pr_update(controller, error, 0.0f, &output) != ESP_OK) {
+  if (app_parallel_update(controller, error, &output) != ESP_OK) {
     // Falha numerica: recupera apenas esta fase e comanda 0 V bipolar.
-    esp_pr_reset(controller);
+    app_parallel_reset(controller);
     return 0.0f;
   }
   return output;
@@ -80,20 +97,34 @@ bool app_control_request_capture(void) {
       memory_order_relaxed);
 }
 
-bool IRAM_ATTR app_control_store_telemetry(uint16_t val_r, uint16_t val_s,
-                                           uint16_t val_t) {
+bool IRAM_ATTR app_control_store_telemetry(uint16_t r, uint16_t s, uint16_t t) {
+  const uint16_t commands[3] = {r, s, t};
+  return app_control_store_sample(commands, NULL, NULL);
+}
+
+bool IRAM_ATTR app_control_store_sample(const uint16_t commands[3],
+                                        const float adc[3],
+                                        const float filtered[3]) {
   uint32_t state = atomic_load_explicit(&capture_state, memory_order_acquire);
   if (state == CAPTURE_REQUESTED) {
     capture_idx = 0;
+    signal_capture_valid = adc && filtered;
     atomic_store_explicit(&capture_state, CAPTURE_FILLING,
                           memory_order_relaxed);
   } else if (state != CAPTURE_FILLING) {
     return false;
   }
 
-  dac_history_r[capture_idx] = val_r;
-  dac_history_s[capture_idx] = val_s;
-  dac_history_t[capture_idx] = val_t;
+  dac_history_r[capture_idx] = commands[0];
+  dac_history_s[capture_idx] = commands[1];
+  dac_history_t[capture_idx] = commands[2];
+  if (adc && filtered) {
+    for (unsigned phase = 0; phase < 3; ++phase) {
+      adc_history[phase][capture_idx] = adc[phase];
+      filtered_history[phase][capture_idx] = filtered[phase];
+    }
+  } else
+    signal_capture_valid = false;
   if (++capture_idx == RMS_BUFFER_SIZE) {
     atomic_store_explicit(&capture_state, CAPTURE_READY, memory_order_release);
     return true;
@@ -112,39 +143,55 @@ bool app_control_calc_rms(float *out_rms_r, float *out_rms_s,
   float sum_sq_t = 0.0f;
 
   for (int i = 0; i < RMS_BUFFER_SIZE; i++) {
-    // R
-    float v_cond_r =
-        CONTROL_OUTPUT_MIN_V +
-        (dac_history_r[i] * (CONTROL_OUTPUT_MAX_V - CONTROL_OUTPUT_MIN_V)) /
-            DAC_MAX_CODE;
-    float i_out_r = v_cond_r / R_LOAD;
-    sum_sq_r += i_out_r * i_out_r;
-
-    // S
-    float v_cond_s =
-        CONTROL_OUTPUT_MIN_V +
-        (dac_history_s[i] * (CONTROL_OUTPUT_MAX_V - CONTROL_OUTPUT_MIN_V)) /
-            DAC_MAX_CODE;
-    float i_out_s = v_cond_s / R_LOAD;
-    sum_sq_s += i_out_s * i_out_s;
-
-    // T
-    float v_cond_t =
-        CONTROL_OUTPUT_MIN_V +
-        (dac_history_t[i] * (CONTROL_OUTPUT_MAX_V - CONTROL_OUTPUT_MIN_V)) /
-            DAC_MAX_CODE;
-    float i_out_t = v_cond_t / R_LOAD;
-    sum_sq_t += i_out_t * i_out_t;
+    const float i_r = app_control_dac_to_primary_current(dac_history_r[i]);
+    const float i_s = app_control_dac_to_primary_current(dac_history_s[i]);
+    const float i_t = app_control_dac_to_primary_current(dac_history_t[i]);
+    sum_sq_r += i_r * i_r;
+    sum_sq_s += i_s * i_s;
+    sum_sq_t += i_t * i_t;
   }
 
-  float rms_r = N_COIN_TURNS * sqrtf(sum_sq_r / RMS_BUFFER_SIZE);
-  float rms_s = N_COIN_TURNS * sqrtf(sum_sq_s / RMS_BUFFER_SIZE);
-  float rms_t = N_COIN_TURNS * sqrtf(sum_sq_t / RMS_BUFFER_SIZE);
+  float rms_r = sqrtf(sum_sq_r / RMS_BUFFER_SIZE);
+  float rms_s = sqrtf(sum_sq_s / RMS_BUFFER_SIZE);
+  float rms_t = sqrtf(sum_sq_t / RMS_BUFFER_SIZE);
 
 #if CONFIG_APP_RMS_LOG_ENABLE
-  ESP_LOGI(TAG, "Corrente RMS Fase R: %.3f A", rms_r);
-  ESP_LOGI(TAG, "Corrente RMS Fase S: %.3f A", rms_s);
-  ESP_LOGI(TAG, "Corrente RMS Fase T: %.3f A", rms_t);
+  const float currents[3] = {rms_r, rms_s, rms_t};
+  const uint16_t *histories[3] = {dac_history_r, dac_history_s, dac_history_t};
+  for (unsigned phase = 0; phase < 3; ++phase) {
+    if (!(CONFIG_APP_CONTROL_PHASE_MASK & (1U << phase)))
+      continue;
+    const char name = "RST"[phase];
+    app_signal_stats_t current = {0}, dac = {0};
+    uint16_t code_min = DAC_MAX_CODE, code_max = 0;
+    for (unsigned i = 0; i < RMS_BUFFER_SIZE; ++i) {
+      const uint16_t code = histories[phase][i];
+      app_signal_stats_add(&current, app_control_dac_to_primary_current(code));
+      app_signal_stats_add(&dac, (float)code * (DAC_REFERENCE_V / 4096.0f));
+      if (code < code_min) code_min = code;
+      if (code > code_max) code_max = code;
+    }
+    ESP_LOGI(TAG, "Compensacao estimada %c: Icomp_mean=%+.6f Icomp_rms=%.6f A",
+             name, current.mean, currents[phase]);
+    ESP_LOGI(TAG, "DAC %c (estimado): media=%.6f RMS=%.6f V; code_min=%u code_max=%u",
+             name, dac.mean, app_signal_rms(&dac), (unsigned)code_min,
+             (unsigned)code_max);
+    if (signal_capture_valid) {
+      app_signal_stats_t raw = {0}, filtered = {0};
+      for (unsigned i = 0; i < RMS_BUFFER_SIZE; ++i) {
+        app_signal_stats_add(&raw, adc_history[phase][i]);
+        app_signal_stats_add(&filtered, filtered_history[phase][i]);
+      }
+      ESP_LOGI(TAG, "ADC %c: media=%.6f RMS=%.6f V; ruido_RMS=%.3f mV", name,
+               raw.mean, app_signal_rms(&raw),
+               1000.0f * app_signal_ac_rms(&raw));
+      ESP_LOGI(
+          TAG,
+          "FIR %c (DC normalizado): media=%.6f RMS=%.6f V; ruido_RMS=%.3f mV",
+          name, filtered.mean, app_signal_rms(&filtered),
+          1000.0f * app_signal_ac_rms(&filtered));
+    }
+  }
 #endif
 
   if (out_rms_r)

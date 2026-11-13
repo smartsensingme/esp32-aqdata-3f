@@ -10,9 +10,9 @@ static atomic_bool stop;
 static void check_rms(void) {
   float r = -1.0f, s = -1.0f, t = -1.0f;
   assert(app_control_calc_rms(&r, &s, &t));
-  assert(fabsf(r - 80.0f) < 0.002f);
-  assert(fabsf(s - (80.0f / 4095.0f)) < 0.002f);
-  assert(fabsf(t - 80.0f) < 0.002f);
+  assert(fabsf(r - 3.38539043f) < 0.002f);
+  assert(fabsf(s - (0.0f)) < 0.002f);
+  assert(fabsf(t - 3.38373741f) < 0.002f);
 }
 
 static void *producer(void *unused) {
@@ -50,9 +50,9 @@ int main(void) {
     float r, s, t;
     while (!app_control_calc_rms(&r, &s, &t))
       sched_yield();
-    assert(fabsf(r - 80.0f) < 0.002f);
-    assert(fabsf(s - (80.0f / 4095.0f)) < 0.002f);
-    assert(fabsf(t - 80.0f) < 0.002f);
+    assert(fabsf(r - 3.38539043f) < 0.002f);
+    assert(fabsf(s - (0.0f)) < 0.002f);
+    assert(fabsf(t - 3.38373741f) < 0.002f);
   }
   atomic_store_explicit(&stop, true, memory_order_relaxed);
   assert(pthread_join(thread, NULL) == 0);

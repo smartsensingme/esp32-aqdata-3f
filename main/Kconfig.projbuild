@@ -1,11 +1,46 @@
 menu "Application control"
 
+config APP_CONTROL_PHASE_MASK
+    int "Enabled closed-loop phases (R=1, S=2, T=4)"
+    range 1 7
+    default 1
+    help
+        Bit mask of connected phases allowed to drive the DAC in normal
+        closed-loop operation. Disabled phases stay at midpoint. R-only
+        commissioning uses 1; all three connected sensors use 7.
+
+config APP_CONTROL_LIMIT_MV
+    int "Controller command limit in software millivolts"
+    range 1 6000
+    default 6000
+    help
+        Symmetric limit before mapping the +/-6 V software range to DAC codes.
+        6000 uses the full DAC code range 0..4095. Smaller values explicitly
+        restrict the actuator range; the application default has no reduced
+        commissioning ceiling.
+        This is a software scale, not a measurement of voltage/current at the
+        coil. PR and integral share the full range without fixed reserves.
+
+config APP_OFFSET_CAL_GPIO
+    int "Active-low startup offset calibration GPIO"
+    range 7 18
+    default 7
+    help
+        Input with internal pull-up, sampled only during startup. Connect to
+        ground during reset to measure and persist enabled ADC offsets.
+        Enabled phases must have zero physical error. The DAC stays at midpoint
+        until calibration and NVS commit finish. Release before the next reset
+        to reuse the stored record. Choose an unused, board-accessible GPIO;
+        MCP4922 pin conflicts are rejected at startup.
+
 config APP_PR_TRACKING_TIME_US
     int "Anti-windup tracking time (microseconds; 0 disables)"
     range 0 10000000
     default 10000
     help
-        Common tracking time for the resonant branches. The initial 10 ms
+        Common post-sample tracking time for the summed PR+I output.
+        Component-local corrections are disabled in this coordinator.
+        The initial 10 ms
         value is provisional and must be validated with the physical plant.
         Smaller values produce stronger state correction during saturation.
         Zero reproduces the linear controller with output limiting only.
@@ -34,7 +69,8 @@ config APP_RMS_LOG_ENABLE
     bool "Print RMS values to the console"
     default y
     help
-        Print the three RMS results after each capture. Disable to isolate
+        Print compensation RMS and ADC/FIR mean, total RMS and AC RMS for
+        enabled phases after each 100 ms capture. Disable to isolate
         console formatting and output from telemetry capture, worker polling
         and RMS calculation, which remain unchanged. No additional persistent
         buffers are allocated by this option.
