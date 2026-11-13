@@ -35,7 +35,8 @@ void app_control_init(void) {
 void app_control_init_with_limit(float limit) {
   ESP_ERROR_CHECK(isfinite(limit) && limit > 0.0f &&
                           limit <= CONTROL_OUTPUT_MAX_V
-                      ? ESP_OK : ESP_ERR_INVALID_ARG);
+                      ? ESP_OK
+                      : ESP_ERR_INVALID_ARG);
   // Sintonia provisoria de comissionamento, com Tustin prewarped.
   const unsigned orders[] = {1, 2, 3, 5, 7};
   const float gains[] = {APP_CONTROL_KR60, APP_CONTROL_KR120, APP_CONTROL_KR180,
@@ -50,7 +51,8 @@ void app_control_init_with_limit(float limit) {
       .kp = APP_CONTROL_KP,
       .output_min = -limit,
       .output_max = limit,
-      .anti_windup_tracking_time_s = CONFIG_APP_PR_TRACKING_TIME_US / 1000000.0f,
+      .anti_windup_tracking_time_s =
+          CONFIG_APP_PR_TRACKING_TIME_US / 1000000.0f,
       .tracking_mode = ESP_PR_TRACKING_EXTERNAL,
       .resonators = branches,
       .resonator_count = RESONATOR_COUNT,
@@ -132,8 +134,8 @@ bool IRAM_ATTR app_control_store_sample(const uint16_t commands[3],
   return false;
 }
 
-bool app_control_calc_rms(float *out_rms_r, float *out_rms_s,
-                          float *out_rms_t) {
+bool app_control_calc_rms_report(float *out_rms_r, float *out_rms_s,
+                                 float *out_rms_t, bool detailed) {
   if (atomic_load_explicit(&capture_state, memory_order_acquire) !=
       CAPTURE_READY)
     return false;
@@ -156,11 +158,14 @@ bool app_control_calc_rms(float *out_rms_r, float *out_rms_s,
   float rms_t = sqrtf(sum_sq_t / RMS_BUFFER_SIZE);
 
 #if CONFIG_APP_RMS_LOG_ENABLE
+  if (detailed)
+    ESP_LOGI(TAG,
+             "Relatorio R: N=%u janela=100 ms; media=DC; RMS total inclui DC; "
+             "desvio populacional=RMS AC",
+             (unsigned)RMS_BUFFER_SIZE);
   const float currents[3] = {rms_r, rms_s, rms_t};
   const uint16_t *histories[3] = {dac_history_r, dac_history_s, dac_history_t};
   for (unsigned phase = 0; phase < 3; ++phase) {
-    if (!(CONFIG_APP_CONTROL_PHASE_MASK & (1U << phase)))
-      continue;
     const char name = "RST"[phase];
     app_signal_stats_t current = {0}, dac = {0};
     uint16_t code_min = DAC_MAX_CODE, code_max = 0;
@@ -168,30 +173,46 @@ bool app_control_calc_rms(float *out_rms_r, float *out_rms_s,
       const uint16_t code = histories[phase][i];
       app_signal_stats_add(&current, app_control_dac_to_primary_current(code));
       app_signal_stats_add(&dac, (float)code * (DAC_REFERENCE_V / 4096.0f));
-      if (code < code_min) code_min = code;
-      if (code > code_max) code_max = code;
+      if (code < code_min)
+        code_min = code;
+      if (code > code_max)
+        code_max = code;
     }
     ESP_LOGI(TAG, "Compensacao estimada %c: Icomp_mean=%+.6f Icomp_rms=%.6f A",
              name, current.mean, currents[phase]);
-    ESP_LOGI(TAG, "DAC %c (estimado): media=%.6f RMS=%.6f V; code_min=%u code_max=%u",
-             name, dac.mean, app_signal_rms(&dac), (unsigned)code_min,
-             (unsigned)code_max);
-    if (signal_capture_valid) {
-      app_signal_stats_t raw = {0}, filtered = {0};
-      for (unsigned i = 0; i < RMS_BUFFER_SIZE; ++i) {
-        app_signal_stats_add(&raw, adc_history[phase][i]);
-        app_signal_stats_add(&filtered, filtered_history[phase][i]);
-      }
-      ESP_LOGI(TAG, "ADC %c: media=%.6f RMS=%.6f V; ruido_RMS=%.3f mV", name,
-               raw.mean, app_signal_rms(&raw),
-               1000.0f * app_signal_ac_rms(&raw));
+    if (detailed && phase == 0) {
       ESP_LOGI(
           TAG,
-          "FIR %c (DC normalizado): media=%.6f RMS=%.6f V; ruido_RMS=%.3f mV",
-          name, filtered.mean, app_signal_rms(&filtered),
-          1000.0f * app_signal_ac_rms(&filtered));
+          "DAC %c (estimado): media=%.6f RMS=%.6f V; code_min=%u code_max=%u",
+          name, dac.mean, app_signal_rms(&dac), (unsigned)code_min,
+          (unsigned)code_max);
+      if (signal_capture_valid) {
+        app_signal_stats_t raw = {0}, filtered = {0};
+        float raw_min = INFINITY, raw_max = -INFINITY;
+        float fir_min = INFINITY, fir_max = -INFINITY;
+        for (unsigned i = 0; i < RMS_BUFFER_SIZE; ++i) {
+          app_signal_stats_add(&raw, adc_history[phase][i]);
+          app_signal_stats_add(&filtered, filtered_history[phase][i]);
+          raw_min = fminf(raw_min, adc_history[phase][i]);
+          raw_max = fmaxf(raw_max, adc_history[phase][i]);
+          fir_min = fminf(fir_min, filtered_history[phase][i]);
+          fir_max = fmaxf(fir_max, filtered_history[phase][i]);
+        }
+        ESP_LOGI(TAG, "ADC %c: media=%.6f RMS=%.6f V; desvio_padrao=%.3f mV",
+                 name, raw.mean, app_signal_rms(&raw),
+                 1000.0f * app_signal_ac_rms(&raw));
+        ESP_LOGI(TAG,
+                 "FIR %c (DC normalizado): media=%.6f RMS=%.6f V; "
+                 "desvio_padrao=%.3f mV",
+                 name, filtered.mean, app_signal_rms(&filtered),
+                 1000.0f * app_signal_ac_rms(&filtered));
+        ESP_LOGI(TAG, "R min/max: ADC=%.6f/%.6f FIR=%.6f/%.6f V", raw_min,
+                 raw_max, fir_min, fir_max);
+      }
     }
   }
+#else
+  (void)detailed;
 #endif
 
   if (out_rms_r)
@@ -204,4 +225,10 @@ bool app_control_calc_rms(float *out_rms_r, float *out_rms_s,
   /* The next request cannot be accepted until the consumer is finished. */
   atomic_store_explicit(&capture_state, CAPTURE_IDLE, memory_order_release);
   return true;
+}
+
+/* Compatibility entry point for numerical consumers; periodic reporting uses
+ * the explicit detail flag so log cadence does not depend on call count. */
+bool app_control_calc_rms(float *r, float *s, float *t) {
+  return app_control_calc_rms_report(r, s, t, false);
 }

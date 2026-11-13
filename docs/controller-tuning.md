@@ -1,3 +1,7 @@
+> Modos/ensaios de comissionamento abaixo são históricos. A operação atual está
+> em [operation-modes.md](operation-modes.md); flags temporárias foram removidas
+> após o snapshot `86a1fe0`.
+
 > Atualização de 12/11/2026: o ensaio atual usa a faixa completa do DAC
 > (±6 Vsoft, códigos 0–4095). Com Ki=0, PR recebe 100% da faixa. A parada por
 > saturação exige cinco janelas consecutivas de 1 s com ≥10% de amostras nos

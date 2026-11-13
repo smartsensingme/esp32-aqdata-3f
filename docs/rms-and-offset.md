@@ -20,19 +20,12 @@ que não há ruído nem que seu valor médio físico seja nulo.
 
 ## Relatórios
 
-`CONFIG_APP_RMS_LOG_ENABLE=y` mantém a compensação estimada RMS mesmo em DC e,
-na operação normal, acrescenta média, RMS total e RMS AC do ADC bruto e do sinal
-FIR normalizado, somente nas fases habilitadas. A captura tem 1.440 frames,
-100 ms a 14,4 kHz (5 ciclos de 50 Hz e 6 de 60 Hz). É solicitada pelo worker Core 0,
-com política existente de um buffer pendente, sem bloqueio do controle. Há 34.560
-bytes de novos buffers de sinais; cálculos de estatística e logs ficam no worker.
-O custo de cópia durante a captura ainda precisa de validação específica na placa.
-
-O ensaio finito imprime RMS de ADC, erro filtrado e corrente de compensação ao
-parar. O teste de polaridade imprime RMS de cada patamar. A calibração imprime
-média e RMS da tensão filtrada capturada. As janelas têm durações e bandas
-diferentes; não comparar diretamente Vpp de osciloscópio em banda larga com RMS
-ADC/FIR como se fossem a mesma medição.
+`CONFIG_APP_RMS_LOG_ENABLE=y`: resumo DC/RMS das três correntes estimadas a
+cada 10 s; detalhes da fase R antes/depois do FIR a cada 60 s. Cada captura tem
+1.440 frames/100 ms. Estatísticas e logs ficam no Core 0; o controle faz cópia
+limitada durante a captura. Desvio padrão é populacional e corresponde ao RMS
+sem DC. Calibração mostra/persiste ADC/FIR das três fases. Veja
+[operação atual](operation-modes.md) e [calibração](offset-calibration.md).
 
 ## Calibração
 

@@ -1,56 +1,40 @@
-# Calibração dos offsets
+# Calibração de offsets das três fases
 
-O erro de cada fase é tensão ADC menos seu offset. Padrão: +1,65 V. Os offsets são
-carregados antes de iniciar aquisição; um registro inválido usa os padrões.
+Com montagem completa, fontes ligadas e corrente primária nula, conecte GPIO7
+ao GND e resete com `CALIB_IS_ON=0`. Aguarde `Calibration saved R/S/T` e solte
+a GPIO antes do próximo reset com corrente. `TEST_IS_ON` não impede calibração.
+Os DACs permanecem no neutro nominal 2048. Sem registro válido, o padrão é
+1,65 V para cada fase. A calibração não determina polaridade.
 
-Para calibrar: manter a montagem completa (incluindo Rs de 1,985 kΩ), com corrente
-primária nula, ligar GPIO7 ao GND durante o reset e usar `CALIB_IS_ON=0`,
-`TUNING_IS_ON=0`. A GPIO é configurável em `CONFIG_APP_OFFSET_CAL_GPIO`. Depois da
-mensagem `Calibration saved (DMA)`, liberar a GPIO antes de qualquer reset com
-corrente primária. Modos de polaridade e sintonia não gravam offsets.
+O proprietário do ADC no Core 1 usa a mesma LUT calibrada, DMA, alinhamento FOH,
+FIR e carga dos controladores da operação: 10 s de acomodação, depois 1.440
+frames/100 ms. Guarda ADC bruto e FIR normalizado em DC para R/S/T. Os comandos
+dos controladores são descartados e só neutro é enviado aos DACs.
 
-A solicitação é detectada na partida, mas a captura ocorre na task dona do ADC,
-Core 1, pelo caminho contínuo DMA e pelos mesmos filtros e taxa da operação.
-Durante 10 s de acomodação e 100 ms de captura, os quatro DACs permanecem em 2048;
-o resultado dos controladores é descartado. Não se assume que 2048 elimine todos
-os offsets físicos do condicionador; ele é o neutro nominal.
+Depois de parar ADC e esvaziar o pool, calcula e mostra para cada fase antes e
+depois do FIR: N, média/DC, RMS total, desvio padrão populacional, mínimo e
+máximo. O offset usado continua sendo a média aparada do FIR: retira 144 valores
+de cada extremo e calcula a média dos 1.152 restantes. A média integral
+reportada e o offset aparado podem diferir em presença de outliers. Nunca usa
+RMS como offset. Os buffers temporários consomem 34.560 bytes, liberados antes
+do controle normal. Ordenação, estatística e NVS não ocorrem durante aquisição.
 
-A captura contém 1.440 tensões filtradas por fase, normalizadas pelo ganho DC do
-FIR. Descartam-se 144 valores de cada extremidade e calcula-se a média dos 1.152
-restantes. A NVS usa um registro versionado de três floats (namespace
-`adc_offsets`, chave `record_v1`). Só as fases habilitadas por
-`CONFIG_APP_CONTROL_PHASE_MASK` são atualizadas: com R somente, preservam-se S/T.
+Persiste UM blob na namespace `adc_offsets`, chave `calibration_v2`:
+`uint32 version=2`, `uint32 sample_count=1440`, três floats de offset R/S/T,
+três relatórios ADC e três FIR. Cada relatório tem cinco floats nesta ordem:
+média, RMS total, desvio padrão, mínimo e máximo. Layout nativo ESP32-S3,
+little-endian, IEEE float de 32 bits (140 bytes). Não é protocolo portátil.
+A leitura também aceita o antigo `record_v1` (versão 1 + três offsets) quando
+não existe v2 válido; estatísticas antigas inexistentes não são inventadas.
+Não há erase/migração automática na inicialização. A RAM só recebe novos offsets
+após sucesso do commit, e FIR/controladores são reinicializados antes do loop.
 
-O ADC é parado e o pool esvaziado antes da ordenação e gravação. Após commit, os
-estados FIR/PR/PID são reinicializados antes da aquisição de controle. Não há
-alocação ou gravação de offsets durante a operação normal. A captura usa 17.280
-bytes temporários de RAM interna, liberados antes de operar.
+Amostras inválidas em QUALQUER fase, erro ADC/SPI, backlog maior que quatro,
+overflow DMA ou falha NVS impedem iniciar a operação. Não se grava um subconjunto
+de fases. Falha DAC retém contexto e requer reset. Gravação sob queda de energia
+usa garantias NVS e ainda não foi testada fisicamente por esta mudança.
 
-Erro de ADC/SPI, perda do pool, atraso de mais de quatro frames, amostras inválidas
-nas fases habilitadas ou falha de NVS impede iniciar o controle. Falha DAC não é
-repetida; contexto fica retido e requer reset. Não se apaga a partição NVS para
-resolver erros de inicialização. Persistência sob queda de energia usa as
-garantias do NVS, não foi testada fisicamente por estes testes.
-
-Não retirar o sensor para calibrar. Campo residual, deriva térmica, referências,
-montagem incompleta e corrente primária não nula podem alterar o zero. O programa
-não consegue distinguir esses efeitos de offset eletrônico. Calibrar em montagem
-completa e conferir depois média e RMS em zero; não usar RMS total como offset.
-
-A calibração original oneshot foi substituída pela captura operacional para
-consistência. Isso não estabelece que DMA, por si, altere a conversão; a causa das
-diferenças observadas entre ensaios ainda precisa ser isolada.
-
-Veja [estatísticas RMS e normalização FIR](rms-and-offset.md). Testes host:
-
-```sh
-cmake -S main/tests/offsets -B /tmp/offset-tests
-cmake --build /tmp/offset-tests
-ctest --test-dir /tmp/offset-tests --output-on-failure
-```
-
-O teste valida carregamento/solicitação, commit posterior, média aparada,
-preservação das fases desabilitadas, dados inválidos e falha de persistência.
-Não simula ISR/DMA. A captura DMA bruta foi exercitada na placa; a nova calibração
-filtrada/normalizada passou no teste de reconstrução FIR, mas ainda precisa ser
-revalidada em hardware.
+Não remova o sensor para calibrar: campo residual, deriva e montagem incompleta
+podem aparecer como offset. O firmware não distingue esses efeitos. Os testes
+host cobrem estatísticas, média aparada, dados inválidos, falha de commit,
+recarregamento v2 e compatibilidade v1; não simulam ADC/DMA.

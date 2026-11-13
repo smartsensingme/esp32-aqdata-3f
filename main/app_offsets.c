@@ -14,6 +14,8 @@
 #define TRIM_COUNT (APP_OFFSET_SAMPLE_COUNT / 10U)
 #define RECORD_VERSION 1U
 
+_Static_assert(sizeof(app_offset_record_t) == 140, "NVS v2 layout changed");
+
 static const char *TAG = "offsets";
 static bool calibration_requested;
 
@@ -80,21 +82,44 @@ static esp_err_t offsets_startup(const float *adc_voltage_lut, float offsets[3],
     return result;
   }
 
-  offset_record_t record = {0};
-  size_t length = sizeof(record);
-  result = nvs_get_blob(nvs, "record_v1", &record, &length);
-  if (result == ESP_OK && length == sizeof(record) && valid_record(&record)) {
-    for (unsigned phase = 0; phase < 3; ++phase) {
-      offsets[phase] = record.volts[phase];
+  app_offset_record_t saved = {0};
+  size_t length = sizeof(saved);
+  result = nvs_get_blob(nvs, "calibration_v2", &saved, &length);
+  bool loaded = false;
+  if (result == ESP_OK && length == sizeof(saved) && saved.version == 2 &&
+      saved.sample_count == APP_OFFSET_SAMPLE_COUNT) {
+    const offset_record_t check = {
+        .version = RECORD_VERSION,
+        .volts = {saved.offsets[0], saved.offsets[1], saved.offsets[2]}};
+    if (valid_record(&check)) {
+      for (unsigned phase = 0; phase < 3; ++phase)
+        offsets[phase] = saved.offsets[phase];
+      loaded = true;
     }
-    ESP_LOGI(TAG, "Loaded offsets from NVS");
-  } else if (result == ESP_ERR_NVS_NOT_FOUND ||
-             result == ESP_ERR_NVS_INVALID_LENGTH || result == ESP_OK) {
-    ESP_LOGW(TAG, "No valid offset record; using 1.65 V defaults");
-  } else {
+  } else if (result != ESP_OK && result != ESP_ERR_NVS_NOT_FOUND &&
+             result != ESP_ERR_NVS_INVALID_LENGTH) {
     nvs_close(nvs);
     return result;
   }
+  // Legacy offsets remain valid; new statistics require a new calibration.
+  if (!loaded) {
+    offset_record_t record = {0};
+    length = sizeof(record);
+    result = nvs_get_blob(nvs, "record_v1", &record, &length);
+    if (result == ESP_OK && length == sizeof(record) && valid_record(&record)) {
+      for (unsigned phase = 0; phase < 3; ++phase)
+        offsets[phase] = record.volts[phase];
+      loaded = true;
+    } else if (result != ESP_OK && result != ESP_ERR_NVS_NOT_FOUND &&
+               result != ESP_ERR_NVS_INVALID_LENGTH) {
+      nvs_close(nvs);
+      return result;
+    }
+  }
+  if (loaded)
+    ESP_LOGI(TAG, "Loaded offsets from NVS");
+  else
+    ESP_LOGW(TAG, "No valid offset record; using 1.65 V defaults");
 
   // Require three low samples, separated by at least 20 ms, to reject bounce.
   bool calibrate = allow_calibration;
@@ -119,66 +144,76 @@ esp_err_t app_offsets_init(const float *lut, float offsets[3]) {
   return offsets_startup(lut, offsets, true);
 }
 
-esp_err_t app_offsets_load(const float *lut, float offsets[3]) {
-  return offsets_startup(lut, offsets, false);
-}
-
 bool app_offsets_calibration_requested(void) { return calibration_requested; }
 
-esp_err_t app_offsets_commit_samples(float samples[3][APP_OFFSET_SAMPLE_COUNT],
-                                     unsigned mask, float offsets[3]) {
-  if (!samples || !offsets || mask == 0 || mask > 7)
-    return ESP_ERR_INVALID_ARG;
-  offset_record_t record = {.version = RECORD_VERSION};
-  for (unsigned phase = 0; phase < 3; ++phase) {
-    record.volts[phase] = offsets[phase];
-    if (!(mask & (1U << phase)))
-      continue;
-    for (unsigned i = 0; i < APP_OFFSET_SAMPLE_COUNT; ++i)
-      if (!isfinite(samples[phase][i]) || samples[phase][i] <= 0 ||
-          samples[phase][i] >= 3.1f)
-        return ESP_ERR_INVALID_RESPONSE;
-    app_signal_stats_t signal = {0};
-    for (unsigned i = 0; i < APP_OFFSET_SAMPLE_COUNT; ++i)
-      app_signal_stats_add(&signal, samples[phase][i]);
-    ESP_LOGI(TAG, "Calibracao FIR %c: media=%.6f RMS=%.6f V; ruido_RMS=%.3f mV",
-             "RST"[phase], signal.mean, app_signal_rms(&signal),
-             app_signal_ac_rms(&signal) * 1000.0f);
-    qsort(samples[phase], APP_OFFSET_SAMPLE_COUNT, sizeof(float),
-          compare_float);
-    float sum = 0;
-    for (unsigned i = TRIM_COUNT; i < APP_OFFSET_SAMPLE_COUNT - TRIM_COUNT; ++i)
-      sum += samples[phase][i];
-    record.volts[phase] = sum / (APP_OFFSET_SAMPLE_COUNT - 2 * TRIM_COUNT);
+/* Startup worker only: validate before accumulating; raw/FIR are in volts. */
+static bool summarize(const float samples[APP_OFFSET_SAMPLE_COUNT],
+                      app_offset_signal_report_t *report) {
+  app_signal_stats_t stats = {0};
+  float minimum = INFINITY, maximum = -INFINITY;
+  for (unsigned i = 0; i < APP_OFFSET_SAMPLE_COUNT; ++i) {
+    const float value = samples[i];
+    if (!isfinite(value) || value <= 0 || value >= 3.1f)
+      return false;
+    app_signal_stats_add(&stats, value);
+    minimum = fminf(minimum, value);
+    maximum = fmaxf(maximum, value);
   }
-  return app_offsets_commit_values(record.volts, mask, offsets);
+  *report =
+      (app_offset_signal_report_t){stats.mean, app_signal_rms(&stats),
+                                   app_signal_ac_rms(&stats), minimum, maximum};
+  return true;
 }
 
-esp_err_t app_offsets_commit_values(const float values[3], unsigned mask,
-                                    float offsets[3]) {
-  if (!values || !offsets || mask == 0 || mask > 7)
+/* Logging happens only after DMA stop, never in the acquisition loop. */
+static void report_signal(const char *stage, unsigned phase,
+                          const app_offset_signal_report_t *r) {
+  ESP_LOGI(TAG,
+           "Offset %s %c: DC/media=%.6f RMS=%.6f desvio_padrao=%.6f min=%.6f "
+           "max=%.6f V; N=%u",
+           stage, "RST"[phase], r->mean, r->rms, r->standard_deviation,
+           r->minimum, r->maximum, APP_OFFSET_SAMPLE_COUNT);
+}
+
+esp_err_t
+app_offsets_commit_calibration(const float raw[3][APP_OFFSET_SAMPLE_COUNT],
+                               float filtered[3][APP_OFFSET_SAMPLE_COUNT],
+                               float offsets[3]) {
+  if (!raw || !filtered || !offsets)
     return ESP_ERR_INVALID_ARG;
-  offset_record_t record = {.version = RECORD_VERSION};
-  for (unsigned phase = 0; phase < 3; ++phase)
-    record.volts[phase] = mask & (1U << phase) ? values[phase] : offsets[phase];
-  if (!valid_record(&record))
-    return ESP_ERR_INVALID_RESPONSE;
+  app_offset_record_t record = {.version = 2,
+                                .sample_count = APP_OFFSET_SAMPLE_COUNT};
+  // Validate every phase before sorting, reporting or accessing NVS.
+  for (unsigned p = 0; p < 3; ++p) {
+    if (!summarize(raw[p], &record.raw[p]) ||
+        !summarize(filtered[p], &record.filtered[p]))
+      return ESP_ERR_INVALID_RESPONSE;
+  }
+  for (unsigned p = 0; p < 3; ++p) {
+    report_signal("ADC", p, &record.raw[p]);
+    report_signal("FIR", p, &record.filtered[p]);
+    qsort(filtered[p], APP_OFFSET_SAMPLE_COUNT, sizeof(float), compare_float);
+    float sum = 0;
+    for (unsigned i = TRIM_COUNT; i < APP_OFFSET_SAMPLE_COUNT - TRIM_COUNT; ++i)
+      sum += filtered[p][i];
+    record.offsets[p] = sum / (APP_OFFSET_SAMPLE_COUNT - 2 * TRIM_COUNT);
+  }
   nvs_handle_t nvs;
   esp_err_t result = nvs_open("adc_offsets", NVS_READWRITE, &nvs);
   if (result != ESP_OK)
     return result;
-  result = nvs_set_blob(nvs, "record_v1", &record, sizeof(record));
+  result = nvs_set_blob(nvs, "calibration_v2", &record, sizeof(record));
   if (result == ESP_OK)
     result = nvs_commit(nvs);
   nvs_close(nvs);
   if (result == ESP_OK) {
-    for (unsigned phase = 0; phase < 3; ++phase)
-      offsets[phase] = record.volts[phase];
+    for (unsigned p = 0; p < 3; ++p)
+      offsets[p] = record.offsets[p];
     calibration_requested = false;
-    ESP_LOGI(
-        TAG,
-        "Calibration saved (DMA) R/S/T: %.6f / %.6f / %.6f V; release GPIO%d",
-        offsets[0], offsets[1], offsets[2], CONFIG_APP_OFFSET_CAL_GPIO);
+    ESP_LOGI(TAG,
+             "Calibration saved R/S/T (trimmed mean): %.6f / %.6f / %.6f V; "
+             "release GPIO%d",
+             offsets[0], offsets[1], offsets[2], CONFIG_APP_OFFSET_CAL_GPIO);
   }
   return result;
 }

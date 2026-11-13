@@ -1,27 +1,35 @@
 #pragma once
-
 #include "esp_err.h"
 #include <stdbool.h>
+#include <stdint.h>
 #define APP_OFFSET_SAMPLE_COUNT 1440U
-
 #define APP_OFFSET_DEFAULT_V 1.65f
 
-/* Startup: load/default offsets and debounce the active-low request. No ADC
- * acquisition or NVS commit occurs here. Control owner later measures via DMA.
+/* Population statistics in volts, computed after stopping DMA. */
+typedef struct {
+  float mean, rms, standard_deviation, minimum, maximum;
+} app_offset_signal_report_t;
+/* NVS calibration_v2 blob: native little-endian uint32/IEEE float, version=2,
+ * sample count, offsets R/S/T, then raw and DC-normalized FIR reports R/S/T.
+ * All fields are persisted in ONE blob. Old record_v1 offsets remain readable.
  */
+typedef struct {
+  uint32_t version, sample_count;
+  float offsets[3];
+  app_offset_signal_report_t raw[3], filtered[3];
+} app_offset_record_t;
+
+/* Boot-only: load v2/legacy/default and debounce active-low calibration GPIO.
+ * No acquisition or NVS writes. DAC must already be neutral. */
 esp_err_t app_offsets_init(const float *adc_voltage_lut, float offsets[3]);
-
-/* Load/default only: commissioning must never recalibrate or overwrite NVS. */
-esp_err_t app_offsets_load(const float *adc_voltage_lut, float offsets[3]);
-
-/* Request is sampled at boot, but acquisition/commit is owned by Core 1.
- * Commit only after ADC DMA is stopped. Inactive phases retain their offsets.
- * Input rows contain calibrated ADC voltages; caller owns their lifetime.
- * Rows selected by mask are sorted in place (10% trimmed mean). */
 bool app_offsets_calibration_requested(void);
-esp_err_t app_offsets_commit_samples(float samples[3][APP_OFFSET_SAMPLE_COUNT],
-                                     unsigned mask, float offsets[3]);
-
-// Startup/commissioning only, ADC stopped. Commit measured means atomically.
-esp_err_t app_offsets_commit_values(const float values[3], unsigned mask,
-                                    float offsets[3]);
+/* All three phases, zero primary current, ADC stopped. Validates samples,
+ * computes/logs full-population statistics, sorts FIR rows in place and uses
+ * a 10%-per-tail trimmed mean as each offset. Writes one versioned NVS blob;
+ * RAM offsets change only after successful commit. Raw rows are read-only.
+ * No call from a periodic loop; caller owns buffers through return.
+ */
+esp_err_t
+app_offsets_commit_calibration(const float raw[3][APP_OFFSET_SAMPLE_COUNT],
+                               float filtered[3][APP_OFFSET_SAMPLE_COUNT],
+                               float offsets[3]);

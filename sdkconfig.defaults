@@ -19,7 +19,6 @@ CONFIG_COMPILER_OPTIMIZATION_PERF=y
 CONFIG_APP_OFFSET_CAL_GPIO=7
 
 # R-only commissioning, bounded actuation.
-CONFIG_APP_CONTROL_PHASE_MASK=1
 CONFIG_APP_CONTROL_LIMIT_MV=6000
 
 # Keep the portable shared-actuator calculation in internal instruction RAM.

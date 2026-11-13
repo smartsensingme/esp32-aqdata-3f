@@ -29,7 +29,7 @@ typedef enum {
 #if CONFIG_ESP_RT_DIAGNOSTICS_ENABLE
 /* Create the Core 0 reporter before starting the control task. The optional
  * callback runs once in continuous reporter context to report ADC clocks.
- * Finite mode skips it because the ADC is already stopped at dump time. */
+ */
 void app_diagnostics_init(void (*report_adc_rate)(void));
 /* Control-task owner only; call immediately before starting the ADC. */
 void app_diagnostics_start(void);
@@ -45,11 +45,6 @@ void app_diagnostics_event(app_diag_event_t event);
 void app_diagnostics_cycle_end(bool processed);
 /* Publish a due window on a notification timeout, without inventing a cycle. */
 void app_diagnostics_idle(void);
-/* Control-task completion check is in IRAM; continuous mode returns false.
- * Stop ADC before finish; finish transfers ownership to the Core 0 dump task.
- */
-bool app_diagnostics_capture_done(void);
-void app_diagnostics_capture_finish(void);
 #else
 static inline void app_diagnostics_init(void (*report_adc_rate)(void)) {
   (void)report_adc_rate;

@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Provisional R AC commissioning gains; validate before normal/DC operation.
+// Shared provisional gains for R/S/T; validate against the connected plant.
 #define APP_CONTROL_KP 0.5f
 #define APP_CONTROL_KR60 14.0f
 #define APP_CONTROL_KR120 1.0f
@@ -25,7 +25,8 @@
 #define DAC_NEUTRAL_CODE 2048U
 // Carga (Ohms) que transforma a tensão do condicionador em corrente.
 #define R_LOAD 1985.0f
-// Measured common Vref=3.36 V. Conditioner gain=2 remains the schematic assumption.
+// Measured common Vref=3.36 V. Conditioner gain=2 remains the schematic
+// assumption.
 #define DAC_REFERENCE_V 3.36f
 #define CONDITIONER_REFERENCE_V 3.36f
 // Números de espiras da bonina
@@ -39,8 +40,9 @@ extern app_parallel_t pr_fase_t;
 /**
  * @brief Inicializa os controladores PR + I (esp_pid) das tres fases.
  *
- * PR e I usam toda a faixa, com tracking comum da soma aplicada e zera os estados das
- * fases R, S e T. Deve ser chamada antes de iniciar o laco de controle.
+ * PR e I usam toda a faixa, com tracking comum da soma aplicada e zera os
+ * estados das fases R, S e T. Deve ser chamada antes de iniciar o laco de
+ * controle.
  */
 void app_control_init(void);
 // Prepare the symmetric software command bound before ADC acquisition.
@@ -110,3 +112,8 @@ app_control_dac_to_primary_current(uint16_t code) {
                         CONDITIONER_REFERENCE_V;
   return voltage * (N_COIN_TURNS / R_LOAD);
 }
+
+/* Core 0 worker: consume a 100 ms capture, report all current DC/RMS values;
+ * detailed additionally reports phase R DAC and ADC/FIR voltage statistics.
+ * Same buffer ownership/return convention as calc_rms. */
+bool app_control_calc_rms_report(float *r, float *s, float *t, bool detailed);

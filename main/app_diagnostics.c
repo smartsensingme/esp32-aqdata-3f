@@ -25,15 +25,7 @@ _Static_assert(__atomic_always_lock_free(sizeof(uint32_t), 0),
 
 static const char *TAG = "control_diag";
 static DRAM_ATTR esp_rt_diag_t diagnostics;
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS == 0
 static esp_rt_diag_reporter_handle_t reporter;
-#endif
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-static TaskHandle_t dump_task_handle;
-static esp_rt_diag_snapshot_t capture_snapshot;
-static int64_t capture_deadline_us, capture_end_us;
-static bool capture_done;
-#endif
 static void (*adc_rate_callback)(void);
 
 /* ISR-owned monotonic counters. Only the control task imports their unsigned
@@ -41,9 +33,7 @@ static void (*adc_rate_callback)(void);
  */
 static DRAM_ATTR _Atomic uint32_t generated_frames;
 static DRAM_ATTR _Atomic uint32_t pool_overflows;
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS == 0
 static uint32_t previous_generated, previous_overflows;
-#endif
 static uint32_t start_cycles;
 static bool backlog_active;
 
@@ -171,43 +161,7 @@ static void report_window(const esp_rt_diag_snapshot_t *s, const void *data,
   }
 }
 
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-/* Single handoff after ADC stop: task notification publishes the immutable
- * snapshot/payload. No queue copy or formatting runs during acquisition. */
-static void capture_dump_task(void *arg) {
-  (void)arg;
-  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-  ESP_LOGI(TAG, "CAPTURE stopped duration_s=%d RMS=%s; DAC holds last value",
-           CONFIG_APP_DIAG_CAPTURE_SECONDS,
-#if CONFIG_APP_DIAG_DISABLE_RMS
-           "off");
-#else
-           "on");
-#endif
-#if CONFIG_APP_RMS_LOG_ENABLE
-  ESP_LOGI(TAG, "RMS console logging=on");
-#else
-  ESP_LOGI(TAG, "RMS console logging=off");
-#endif
-  report_window(&capture_snapshot, &payload, ESP_RT_DIAG_WINDOW_LOG_AFFECTED,
-                NULL);
-  ESP_LOGI(TAG, "CAPTURE COMPLETE");
-  vTaskDelete(NULL);
-}
-#endif
-
 void app_diagnostics_init(void (*report_adc_rate)(void)) {
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-  /* ADC stop deinitializes its clock registers. Do not inspect them from the
-   * post-stop dump; frame rate is available in the captured statistics. */
-  (void)report_adc_rate;
-  adc_rate_callback = NULL;
-  ESP_ERROR_CHECK(xTaskCreatePinnedToCore(capture_dump_task, "diag_dump", 4096,
-                                          NULL, 4, &dump_task_handle,
-                                          0) == pdPASS
-                      ? ESP_OK
-                      : ESP_ERR_NO_MEM);
-#else
   adc_rate_callback = report_adc_rate;
   const esp_rt_diag_reporter_config_t config = {
       /* Custom labels avoid presenting missed_events=0 as proof of no loss:
@@ -220,7 +174,6 @@ void app_diagnostics_init(void (*report_adc_rate)(void)) {
       .task_core = 0,
   };
   ESP_ERROR_CHECK(esp_rt_diag_reporter_create(&config, &reporter));
-#endif
 }
 
 void app_diagnostics_start(void) {
@@ -232,10 +185,6 @@ void app_diagnostics_start(void) {
   };
   int64_t now = esp_timer_get_time();
   ESP_ERROR_CHECK(esp_rt_diag_init(&diagnostics, &config, now));
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-  capture_deadline_us =
-      now + (int64_t)CONFIG_APP_DIAG_CAPTURE_SECONDS * 1000000;
-#endif
 }
 
 void IRAM_ATTR app_diagnostics_frame_generated(void) {
@@ -360,7 +309,6 @@ void IRAM_ATTR app_diagnostics_event(app_diag_event_t event) {
  * copies/reset window statistics; the reporter copies them into a one-slot
  * overwrite queue. No formatting or allocation occurs on this path. Snapshot
  * and queue cost can affect the next frame and is observable as backlog. */
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS == 0
 static void publish_window(int64_t now_us) {
   uint32_t publish_start = esp_cpu_get_cycle_count();
   payload.timestamp_drops =
@@ -394,8 +342,6 @@ static void publish_window(int64_t now_us) {
                                      esp_cpu_get_cycle_count() - publish_start};
 }
 
-#endif
-
 void IRAM_ATTR app_diagnostics_cycle_end(bool processed) {
   const uint32_t elapsed_cycles = esp_cpu_get_cycle_count() - start_cycles;
   const int64_t end_us = esp_rt_diag_cycle_end_now(&diagnostics);
@@ -406,49 +352,14 @@ void IRAM_ATTR app_diagnostics_cycle_end(bool processed) {
                          elapsed_cycles);
   if (elapsed_cycles > CONTROL_PERIOD_CYCLES)
     esp_rt_diag_event(&diagnostics, APP_DIAG_EXEC_OVERRUNS, 1);
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-  capture_end_us = end_us;
-  capture_done = end_us >= capture_deadline_us;
-#else
   if (esp_rt_diag_snapshot_due(&diagnostics, end_us))
     publish_window(end_us);
-#endif
 }
 
 void app_diagnostics_idle(void) {
   const int64_t now_us = esp_timer_get_time();
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-  capture_end_us = now_us;
-  capture_done = now_us >= capture_deadline_us;
-#else
   if (esp_rt_diag_snapshot_due(&diagnostics, now_us))
     publish_window(now_us);
-#endif
-}
-
-bool IRAM_ATTR app_diagnostics_capture_done(void) {
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-  return capture_done;
-#else
-  return false;
-#endif
-}
-
-void app_diagnostics_capture_finish(void) {
-#if CONFIG_APP_DIAG_CAPTURE_SECONDS > 0
-  payload.timestamp_drops =
-      atomic_load_explicit(&stamp_drops, memory_order_relaxed);
-  esp_rt_diag_event(
-      &diagnostics, APP_DIAG_GENERATED,
-      atomic_load_explicit(&generated_frames, memory_order_relaxed));
-  esp_rt_diag_event(
-      &diagnostics, APP_DIAG_POOL_OVERFLOWS,
-      atomic_load_explicit(&pool_overflows, memory_order_relaxed));
-  /* Use the last measured cycle/timeout, excluding stop/cleanup overhead. */
-  ESP_ERROR_CHECK(esp_rt_diag_take_snapshot(&diagnostics, capture_end_us,
-                                            &capture_snapshot));
-  xTaskNotifyGive(dump_task_handle);
-#endif
 }
 
 #endif

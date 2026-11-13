@@ -40,7 +40,6 @@ Every five-second window reports window and lifetime counters. `pool_lost` is co
 
 The checked-in configuration uses `-O2`, FIR `-O3`, supported FreeRTOS/SPI/ring-buffer IRAM options, continuous demo generation, RMS processing and logs. CPU frequency remains 160 MHz with PM disabled, as required by the DAC cycle-counter timeout contract. A true DAC transfer error stops acquisition and suspends the owner without releasing a possibly active SPI transaction; reset is required.
 
-`APP_DIAG_CAPTURE_SECONDS` selects finite RAM captures; `APP_DIAG_DISABLE_RMS` and `APP_RMS_LOG_ENABLE` allow isolated comparisons. Periodic diagnostic snapshot/publication still perturbs the loop, especially on first use. See the [measurement guide and limits](docs/jitter-diagnostics.md) and [DAC regression/fix validation](docs/diagnostics/2026-11-11/dac-timeouts.md).
 
 ## Hardware Setup
 
@@ -120,9 +119,11 @@ for wiring, zero-error conditions, configuration and failure handling.
 
 ## Controller commissioning
 
-The current R-only gains are provisional; see `main/app_control.h`. The
-combined command can use the full DAC range. `TUNING_IS_ON=1` runs a finite validation and then holds the DACs at
-midpoint; it does not enter continuous control. See [commissioning modes and results](docs/controller-tuning.md).
+All three phases now share the provisional gains in `main/app_control.h`.
+Only `TEST_IS_ON` (three-phase sines) and `CALIB_IS_ON` (polarity check) select
+build modes. Both zero run all three closed loops continuously. DC/RMS reports
+run every 10 s; detailed R ADC/FIR reports run every 60 s. See
+[current operation](docs/operation-modes.md).
 
 The current controller adds an I-only `esp_pid` branch in parallel with the PR.
 See [PR/PID integration and commissioning](docs/pr-pid-integration.md) for

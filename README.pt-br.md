@@ -40,7 +40,6 @@ A cada janela de 5 segundos, o reporter publica contagens da janela e totais des
 
 A configuração versionada usa `-O2`, FIR `-O3`, opções suportadas de IRAM para FreeRTOS/SPI/ring buffer, geração demo contínua, RMS e logs ativos. A CPU permanece em 160 MHz com PM desabilitado, conforme o contrato do timeout do DAC por ciclos. Uma falha real de transferência DAC para a aquisição e suspende o proprietário, mantendo a reserva de um SPI possivelmente ativo; é necessário reset.
 
-`APP_DIAG_CAPTURE_SECONDS` seleciona capturas finitas em RAM; `APP_DIAG_DISABLE_RMS` e `APP_RMS_LOG_ENABLE` permitem comparações isoladas. O snapshot/publicação periódico dos diagnósticos ainda perturba o laço, sobretudo no primeiro uso. Veja o [guia de medição e seus limites](docs/jitter-diagnostics.md) e a [validação da regressão/correção do DAC](docs/diagnostics/2026-11-11/dac-timeouts.md).
 
 ## Configuração de Hardware
 
@@ -111,10 +110,10 @@ para ligação, condição de erro zero, configuração e tratamento de falhas.
 
 ## Comissionamento do controlador
 
-A sintonia atual é provisória, somente R; veja `main/app_control.h`. A soma
-dos comandos pode usar toda a faixa do DAC.
-`TUNING_IS_ON=1` executa validação finita e termina com os DACs no neutro;
-não entra em controle contínuo. Veja [os modos e resultados](docs/controller-tuning.md).
+Os mesmos ganhos provisórios são usados nas três fases. Apenas `TEST_IS_ON`
+(senos de teste) e `CALIB_IS_ON` (polaridade) selecionam modos de compilação.
+Ambos zero fecham as três malhas continuamente. Relatórios DC/RMS a cada 10 s,
+e detalhes ADC/FIR R a cada 60 s. Veja [operação atual](docs/operation-modes.md).
 
 O controlador atual acrescenta um ramo integral `esp_pid` em paralelo ao PR.
 Veja [integração PR/PID e comissionamento](docs/pr-pid-integration.md) para o

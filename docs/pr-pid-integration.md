@@ -1,3 +1,7 @@
+> Modos/ensaios de comissionamento abaixo são históricos. A operação atual está
+> em [operation-modes.md](operation-modes.md); flags temporárias foram removidas
+> após o snapshot `86a1fe0`.
+
 # PR em paralelo com esp_pid integral
 
 A aplicação usa as APIs públicas de resultado e tracking externo de `esp_pid`
