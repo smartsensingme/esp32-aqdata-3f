@@ -7,9 +7,11 @@ Os DACs permanecem no neutro nominal 2048. Sem registro válido, o padrão é
 1,65 V para cada fase. A calibração não determina polaridade.
 
 O proprietário do ADC no Core 1 usa a mesma LUT calibrada, DMA, alinhamento FOH,
-FIR e carga dos controladores da operação: 10 s de acomodação, depois 1.440
-frames/100 ms. Guarda ADC bruto e FIR normalizado em DC para R/S/T. Os comandos
-dos controladores são descartados e só neutro é enviado aos DACs.
+FIR e escritas SPI no neutro da operação. Os controladores são ignorados,
+pois suas ações não seriam aplicadas. A acomodação tem dez blocos de um segundo
+de amostragem, com ADC parado/esvaziado e pausa de um tick entre blocos para
+permitir executar IDLE1. O último bloco emenda na captura de 1.440 frames/100 ms,
+sem pausa ou descarte dentro da janela medida. A duração total inclui as pausas. Guarda ADC bruto e FIR normalizado em DC para R/S/T. Só neutro é enviado aos DACs.
 
 Depois de parar ADC e esvaziar o pool, calcula e mostra para cada fase antes e
 depois do FIR: N, média/DC, RMS total, desvio padrão populacional, mínimo e

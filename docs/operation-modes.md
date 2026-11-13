@@ -74,3 +74,11 @@ com Wi-Fi, e o driver oferece arbitragem. Não foi feita migração para ADC2.
 
 Referências: [ADC contínuo](https://docs.espressif.com/projects/esp-idf/en/v6.0/esp32s3/api-reference/peripherals/adc/adc_continuous.html#hardware-limitations),
 [ADC oneshot](https://docs.espressif.com/projects/esp-idf/en/v6.0/esp32s3/api-reference/peripherals/adc/adc_oneshot.html#hardware-limitations).
+
+Correção de calibração após watchdog IDLE1: PR/PID não são calculados durante
+medição de zero; a acomodação usa blocos limitados com ADC parado antes de cada
+pausa. A janela final é contínua e usa a mesma LUT, alinhamento, FIR e atividade
+SPI no neutro. Não é reprodução da carga computacional dos controladores.
+Watchdogs permanecem ativos. Backlog, overflow e dados inválidos rejeitam a
+calibração sem gravar NVS, com motivo e máximo de notificações no log.
+A execução na placa dessa correção ainda precisa ser verificada.

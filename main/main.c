@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 static const char *TAG = "main";
 
 #define NUM_CHIPS 2
@@ -322,9 +321,10 @@ static void init_adc_continuous(void) {
   ESP_LOGI(TAG, "ADC driver initialized on Core %d", xPortGetCoreID());
 }
 
-/* Startup calibration uses the same DMA pattern, Core 1 frame notifications,
- * LUT, FOH/FIR/controller workload and neutral SPI writes as operation. ADC is
- * stopped before sorting/NVS writes. No calibration code runs in the ISR. */
+/* Startup calibration preserves DMA/LUT/FOH/FIR and neutral SPI writes.
+ * Discarded controller actions are not calculated. Settling is split into
+ * one-second acquisition blocks with ADC stopped before an Idle opportunity;
+ * the final 100 ms capture is contiguous. No NVS writes with ADC running. */
 static esp_err_t calibrate_offsets_dma(void) {
   float (*samples)[APP_OFFSET_SAMPLE_COUNT] =
       heap_caps_malloc(6 * APP_OFFSET_SAMPLE_COUNT * sizeof(float),
@@ -338,11 +338,14 @@ static esp_err_t calibrate_offsets_dma(void) {
       144000U; // 10 s at operating workload before zero capture
   float previous_r = 0, previous_t = 0;
   bool dac_failed = false;
+  bool adc_running = false;
+  const char *failure = "none";
+  unsigned max_pending = 0;
   offset_dma_overflow = false;
   offset_dma_active = true;
   ESP_LOGW(TAG,
-           "Calibrating offsets with operating DMA path: 10 s settle + 100 ms "
-           "samples; mask=%u",
+           "Calibrating offsets: 10 x 1 s settling blocks + 100 ms contiguous "
+           "capture; ADC/FIR/SPI active, controllers bypassed; mask=%u",
            7U);
   esp_err_t result = adc_continuous_start(adc_handle);
   if (result != ESP_OK) {
@@ -350,11 +353,17 @@ static esp_err_t calibrate_offsets_dma(void) {
     free(samples);
     return result;
   }
+  adc_running = true;
   adc_apply_target_frame_rate();
   for (unsigned frame = 0; frame < discard_frames + APP_OFFSET_SAMPLE_COUNT;
        ++frame) {
     const unsigned pending = ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(100));
+    if (pending > max_pending)
+      max_pending = pending;
     if (pending == 0 || pending > 4 || offset_dma_overflow) {
+      failure = offset_dma_overflow ? "DMA pool overflow"
+                : pending == 0      ? "ADC frame timeout"
+                                    : "ADC backlog >4 frames";
       result = ESP_ERR_INVALID_RESPONSE;
       break;
     }
@@ -365,6 +374,7 @@ static esp_err_t calibrate_offsets_dma(void) {
       result = adc_continuous_read(adc_handle, buffer + collected,
                                    sizeof(buffer) - collected, &got, 0);
       if (result != ESP_OK || got == 0 || got > sizeof(buffer) - collected) {
+        failure = "ADC read/partial frame";
         result = ESP_ERR_INVALID_RESPONSE;
         break;
       }
@@ -381,6 +391,7 @@ static esp_err_t calibrate_offsets_dma(void) {
       const unsigned raw = sample->type2.data;
       if (ch < ADC_CHAN_R || ch > ADC_CHAN_T ||
           (seen & (1U << (ch - ADC_CHAN_R)))) {
+        failure = "unexpected/duplicate ADC channel";
         result = ESP_ERR_INVALID_RESPONSE;
         break;
       }
@@ -388,11 +399,14 @@ static esp_err_t calibrate_offsets_dma(void) {
       seen |= 1U << phase;
       volts[phase] = adc_cali_lut[raw];
       if (raw == 0 || raw == 4095) {
+        failure = "ADC at rail (one or more phases)";
         result = ESP_ERR_INVALID_RESPONSE;
         break;
       }
     }
     if (result != ESP_OK || seen != 7) {
+      if (result == ESP_OK)
+        failure = "missing ADC channel";
       result = ESP_ERR_INVALID_RESPONSE;
       break;
     }
@@ -405,7 +419,6 @@ static esp_err_t calibrate_offsets_dma(void) {
     previous_r = r;
     previous_t = t;
     esp_fir_t *firs[3] = {&fir_fase_r, &fir_fase_s, &fir_fase_t};
-    app_parallel_t *controllers[3] = {&pr_fase_r, &pr_fase_s, &pr_fase_t};
     for (unsigned phase = 0; phase < 3; ++phase) {
       const float filtered =
           esp_fir_process_symmetric(firs[phase], aligned[phase]);
@@ -414,24 +427,61 @@ static esp_err_t calibrate_offsets_dma(void) {
             phase_offsets[phase] + filtered * inverse_fir_dc_gain;
         raw_samples[phase][frame - discard_frames] = volts[phase];
       }
-      (void)app_control_process_phase(controllers[phase], filtered);
     }
-    // Computation above maintains the normal workload; its output is discarded.
+    // Preserve analog SPI activity, without calculating unused PR/PID actions.
     result = mcp4922_ll_write_channels(&dac_ctx, neutral);
     if (result != ESP_OK) {
       dac_failed = true;
+      failure = "DAC transaction";
       break;
     }
+    // Only settling may be interrupted. Never pause/drop frames inside the
+    // final capture, and never sleep with acquisition accumulating a backlog.
+    if (frame + 1U < discard_frames &&
+        (frame + 1U) % APP_CONTROL_FRAME_RATE_HZ == 0) {
+      result = adc_continuous_stop(adc_handle);
+      if (result != ESP_OK) {
+        failure = "ADC settling stop";
+        break;
+      }
+      adc_running = false;
+      (void)ulTaskNotifyTake(pdTRUE, 0);
+      result = adc_continuous_flush_pool(adc_handle);
+      if (result != ESP_OK) {
+        failure = "ADC settling flush";
+        break;
+      }
+      vTaskDelay(1); // IDLE1 can execute; taskYIELD would not ensure that.
+      result = adc_continuous_start(adc_handle);
+      if (result != ESP_OK) {
+        failure = "ADC settling restart";
+        break;
+      }
+      adc_running = true;
+      adc_apply_target_frame_rate();
+    }
   }
-  const esp_err_t stop = adc_continuous_stop(adc_handle);
+  const esp_err_t stop = adc_running ? adc_continuous_stop(adc_handle) : ESP_OK;
   offset_dma_active = false;
-  if (result == ESP_OK)
+  if (result == ESP_OK && stop != ESP_OK) {
+    failure = "ADC final stop";
     result = stop;
+  }
   (void)ulTaskNotifyTake(pdTRUE, 0);
   if (result == ESP_OK)
     result = adc_continuous_flush_pool(adc_handle);
-  if (result == ESP_OK && offset_dma_overflow)
+  if (result == ESP_OK && offset_dma_overflow) {
+    failure = "DMA pool overflow at capture end";
     result = ESP_ERR_INVALID_RESPONSE;
+  }
+  if (result != ESP_OK)
+    ESP_LOGE(TAG,
+             "Offset capture rejected: %s; max_pending=%u pool_overflow=%u; "
+             "NVS unchanged",
+             failure, max_pending, (unsigned)offset_dma_overflow);
+  else
+    ESP_LOGI(TAG, "Offset capture completed; max_pending=%u; ADC stopped",
+             max_pending);
   if (result == ESP_OK)
     result =
         app_offsets_commit_calibration(raw_samples, samples, phase_offsets);
@@ -762,7 +812,6 @@ void app_main(void) {
   app_polarity_run(&dac_ctx, adc_cali_lut, CALIB_DAC_STEP_CODES);
   return;
 #endif
-
 
   app_control_init();
   ESP_LOGI(TAG,
