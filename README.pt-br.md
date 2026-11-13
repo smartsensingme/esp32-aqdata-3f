@@ -42,7 +42,7 @@ A configuração versionada usa `-O2`, FIR `-O3`, opções suportadas de IRAM pa
 ## Configuração de Hardware
 
 * **Entrada do ADC (ADC1)**: GPIO 4 (Fase R), GPIO 5 (Fase S), GPIO 6 (Fase T)
-* **SPI do DAC (SPI2)**: MOSI (GPIO 11), SCK (GPIO 12), LDAC (GPIO 14), CS1 (GPIO 10), CS2 (GPIO 9)
+* **SPI do DAC (SPI2)**: MOSI (GPIO 17), SCK (GPIO 18), LDAC (GPIO 21), CS1 (GPIO 15), CS2 (GPIO 16)
 
 ## Como Compilar e Rodar
 

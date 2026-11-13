@@ -42,7 +42,7 @@ The checked-in configuration uses `-O2`, FIR `-O3`, supported FreeRTOS/SPI/ring-
 ## Hardware Setup
 
 * **ADC Input (ADC1)**: GPIO 4 (Phase R), GPIO 5 (Phase S), GPIO 6 (Phase T)
-* **DAC SPI (SPI2)**: MOSI (GPIO 11), SCK (GPIO 12), LDAC (GPIO 14), CS1 (GPIO 10), CS2 (GPIO 9)
+* **DAC SPI (SPI2)**: MOSI (GPIO 17), SCK (GPIO 18), LDAC (GPIO 21), CS1 (GPIO 15), CS2 (GPIO 16)
 
 ## How to Build and Run
 
