@@ -24,8 +24,9 @@ Persiste UM blob na namespace `adc_offsets`, chave `calibration_v2`:
 três relatórios ADC e três FIR. Cada relatório tem cinco floats nesta ordem:
 média, RMS total, desvio padrão, mínimo e máximo. Layout nativo ESP32-S3,
 little-endian, IEEE float de 32 bits (140 bytes). Não é protocolo portátil.
-A leitura também aceita o antigo `record_v1` (versão 1 + três offsets) quando
-não existe v2 válido; estatísticas antigas inexistentes não são inventadas.
+Apenas `calibration_v2` é lido. Registros antigos são ignorados; na ausência de
+v2 válido, usa 1,65 V em cada fase até nova calibração. Não é necessário apagar
+a partição NVS para recalibrar.
 Não há erase/migração automática na inicialização. A RAM só recebe novos offsets
 após sucesso do commit, e FIR/controladores são reinicializados antes do loop.
 
@@ -37,4 +38,4 @@ usa garantias NVS e ainda não foi testada fisicamente por esta mudança.
 Não remova o sensor para calibrar: campo residual, deriva e montagem incompleta
 podem aparecer como offset. O firmware não distingue esses efeitos. Os testes
 host cobrem estatísticas, média aparada, dados inválidos, falha de commit,
-recarregamento v2 e compatibilidade v1; não simulam ADC/DMA.
+recarregamento v2 e rejeição de versões antigas; não simulam ADC/DMA.

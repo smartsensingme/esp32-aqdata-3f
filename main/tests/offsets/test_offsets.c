@@ -6,11 +6,7 @@
 #include <string.h>
 
 static app_offset_record_t stored, pending;
-static struct {
-  uint32_t version;
-  float volts[3];
-} legacy;
-static bool present, legacy_present, low, fail_commit, fail_init;
+static bool present, low, fail_commit, fail_init;
 static unsigned commits;
 static float lut[4096], raw[3][APP_OFFSET_SAMPLE_COUNT],
     filtered[3][APP_OFFSET_SAMPLE_COUNT];
@@ -35,14 +31,13 @@ esp_err_t nvs_open(const char *name, int mode, nvs_handle_t *h) {
 esp_err_t nvs_get_blob(nvs_handle_t h, const char *key, void *data,
                        size_t *len) {
   (void)h;
-  const bool v2 = !strcmp(key, "calibration_v2");
-  if (v2 ? !present : !legacy_present)
+  assert(!strcmp(key, "calibration_v2"));
+  if (!present)
     return ESP_ERR_NVS_NOT_FOUND;
-  const size_t size = v2 ? sizeof stored : sizeof legacy;
-  if (*len < size)
+  if (*len < sizeof stored)
     return ESP_ERR_NVS_INVALID_LENGTH;
-  memcpy(data, v2 ? (const void *)&stored : (const void *)&legacy, size);
-  *len = size;
+  memcpy(data, &stored, sizeof stored);
+  *len = sizeof stored;
   return ESP_OK;
 }
 esp_err_t nvs_set_blob(nvs_handle_t h, const char *key, const void *data,
@@ -119,18 +114,15 @@ int main(void) {
   assert(fabsf(offsets[0] - 1.5f) < 1e-4f &&
          stored.filtered[0].standard_deviation > 0.1f);
   present = false;
-  legacy_present = true;
-  legacy.version = 1;
-  for (unsigned p = 0; p < 3; ++p)
-    legacy.volts[p] = 1.6f;
-  assert(app_offsets_init(lut, offsets) == ESP_OK && offsets[0] == 1.6f);
+  assert(app_offsets_init(lut, offsets) == ESP_OK && offsets[0] == 1.65f);
   present = true;
-  stored.version = 99;
-  assert(app_offsets_init(lut, offsets) == ESP_OK && offsets[0] == 1.6f);
-  legacy_present = false;
+  stored.version = 1;
+  assert(app_offsets_init(lut, offsets) == ESP_OK && offsets[0] == 1.65f);
+  stored.version = 2;
+  stored.offsets[1] = NAN;
   assert(app_offsets_init(lut, offsets) == ESP_OK && offsets[0] == 1.65f);
   fail_init = true;
   assert(app_offsets_init(lut, offsets) == ESP_FAIL);
-  puts("Three-phase ADC/FIR offset statistics, persistence and legacy loading "
+  puts("Three-phase ADC/FIR offset statistics, persistence and defaults "
        "passed");
 }

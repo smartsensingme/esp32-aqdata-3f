@@ -12,28 +12,21 @@
 #include <stdlib.h>
 
 #define TRIM_COUNT (APP_OFFSET_SAMPLE_COUNT / 10U)
-#define RECORD_VERSION 1U
+#define RECORD_VERSION 2U
 
 _Static_assert(sizeof(app_offset_record_t) == 140, "NVS v2 layout changed");
 
 static const char *TAG = "offsets";
 static bool calibration_requested;
 
-typedef struct {
-  uint32_t version;
-  float volts[3];
-} offset_record_t;
-
-static bool valid_record(const offset_record_t *record) {
-  if (record->version != RECORD_VERSION) {
+static bool valid_record(const app_offset_record_t *record) {
+  if (record->version != RECORD_VERSION ||
+      record->sample_count != APP_OFFSET_SAMPLE_COUNT)
     return false;
-  }
-  for (unsigned phase = 0; phase < 3; ++phase) {
-    if (!isfinite(record->volts[phase]) || record->volts[phase] <= 0.0f ||
-        record->volts[phase] >= 3.1f) {
+  for (unsigned p = 0; p < 3; ++p)
+    if (!isfinite(record->offsets[p]) || record->offsets[p] <= 0.0f ||
+        record->offsets[p] >= 3.1f)
       return false;
-    }
-  }
   return true;
 }
 
@@ -85,36 +78,15 @@ static esp_err_t offsets_startup(const float *adc_voltage_lut, float offsets[3],
   app_offset_record_t saved = {0};
   size_t length = sizeof(saved);
   result = nvs_get_blob(nvs, "calibration_v2", &saved, &length);
-  bool loaded = false;
-  if (result == ESP_OK && length == sizeof(saved) && saved.version == 2 &&
-      saved.sample_count == APP_OFFSET_SAMPLE_COUNT) {
-    const offset_record_t check = {
-        .version = RECORD_VERSION,
-        .volts = {saved.offsets[0], saved.offsets[1], saved.offsets[2]}};
-    if (valid_record(&check)) {
-      for (unsigned phase = 0; phase < 3; ++phase)
-        offsets[phase] = saved.offsets[phase];
-      loaded = true;
-    }
+  const bool loaded =
+      result == ESP_OK && length == sizeof(saved) && valid_record(&saved);
+  if (loaded) {
+    for (unsigned phase = 0; phase < 3; ++phase)
+      offsets[phase] = saved.offsets[phase];
   } else if (result != ESP_OK && result != ESP_ERR_NVS_NOT_FOUND &&
              result != ESP_ERR_NVS_INVALID_LENGTH) {
     nvs_close(nvs);
     return result;
-  }
-  // Legacy offsets remain valid; new statistics require a new calibration.
-  if (!loaded) {
-    offset_record_t record = {0};
-    length = sizeof(record);
-    result = nvs_get_blob(nvs, "record_v1", &record, &length);
-    if (result == ESP_OK && length == sizeof(record) && valid_record(&record)) {
-      for (unsigned phase = 0; phase < 3; ++phase)
-        offsets[phase] = record.volts[phase];
-      loaded = true;
-    } else if (result != ESP_OK && result != ESP_ERR_NVS_NOT_FOUND &&
-               result != ESP_ERR_NVS_INVALID_LENGTH) {
-      nvs_close(nvs);
-      return result;
-    }
   }
   if (loaded)
     ESP_LOGI(TAG, "Loaded offsets from NVS");
@@ -181,7 +153,7 @@ app_offsets_commit_calibration(const float raw[3][APP_OFFSET_SAMPLE_COUNT],
                                float offsets[3]) {
   if (!raw || !filtered || !offsets)
     return ESP_ERR_INVALID_ARG;
-  app_offset_record_t record = {.version = 2,
+  app_offset_record_t record = {.version = RECORD_VERSION,
                                 .sample_count = APP_OFFSET_SAMPLE_COUNT};
   // Validate every phase before sorting, reporting or accessing NVS.
   for (unsigned p = 0; p < 3; ++p) {
